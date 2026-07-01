@@ -180,7 +180,11 @@
             games.sort((a, b) => (b.yourTurn - a.yourTurn) || (b.updated - a.updated));
             for (const g of games) {
                 const players = parseStatus(g.status);
-                const me = players.find(p => p.self);
+                // "self" is per-viewer: this device's seat userId for this game, matched against
+                // each player's uid. Never trust a baked-in flag — the status is shared across seats.
+                const mine = g.userId || "";
+                const isMine = (p) => !!mine && p.uid === mine;
+                const me = players.find(isMine);
                 const card = document.createElement("div");
                 card.className = "card" + (g.yourTurn ? " turn" : "");
                 const title = ((g.title && g.title.length ? g.title : "Game").replace(/\s*lobby\s*$/i, "").trim()) || "Game";
@@ -203,11 +207,11 @@
                 if (sb) {
                     players.slice().sort((a, b) => (b.vp || 0) - (a.vp || 0)).forEach(p => {
                         const row = document.createElement("div");
-                        row.className = "srow" + (p.turn ? " turn" : "") + (p.self ? " self" : "");
+                        row.className = "srow" + (p.turn ? " turn" : "") + (isMine(p) ? " self" : "");
                         row.innerHTML = iconTag("ficon", p.icon) +
                             '<span class="sinfo"><span class="sfaction"></span><span class="splayer"></span></span>' +
                             '<span class="svp"></span>';
-                        row.querySelector(".sfaction").textContent = (p.faction || "") + (p.self ? " (you)" : "");
+                        row.querySelector(".sfaction").textContent = (p.faction || "") + (isMine(p) ? " (you)" : "");
                         if (p.player && p.player !== p.faction) row.querySelector(".splayer").textContent = p.player;
                         row.querySelector(".svp").textContent = (typeof p.vp === "number" && p.vp >= 0) ? (p.vp + " VP") : "";
                         sb.appendChild(row);

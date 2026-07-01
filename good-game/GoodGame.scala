@@ -709,6 +709,7 @@ object GoodGame {
                         val updated = st.map(_.updated).getOrElse(s.updated)
                         "{" +
                             "\"journalId\":"  + js(s.journalId)  + "," +
+                            "\"userId\":"     + js(s.userId)     + "," +
                             "\"title\":"      + js(title)        + "," +
                             "\"meta\":"       + js(s.meta)       + "," +
                             "\"playSecret\":" + js(s.playSecret) + "," +
