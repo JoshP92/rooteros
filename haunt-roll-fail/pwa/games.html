@@ -50,15 +50,12 @@
             padding: 14px 16px; transition: border-color 0.15s, background 0.15s;
         }
         .card:hover { border-color: #3a3a3a; background: #151515; }
-        .card.turn { border-color: #3f7d3f; background: #0f1a0f; }
+        .card.turn { border-color: #3f7d3f; }   /* your-turn card: green border only — the row green is the fill */
         .card .row1 { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .card .title { font-size: 17px; color: #e6e6e6; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .badge { flex: 0 0 auto; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
         .badge.turn { background: #2f6d2f; color: #eaffea; }
         .badge.wait { background: #23232b; color: #8a8a9a; }
-        .card .row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
-        .meta { font-size: 12px; color: #6f6f6f; text-transform: capitalize; }
-        .when { font-size: 12px; color: #5c5c5c; }
         .empty { text-align: center; color: #6a6a6a; padding: 44px 20px; line-height: 1.6; font-size: 15px; }
         .foot { margin-top: 28px; text-align: center; font-size: 11px; color: #444; }
         .msg { font-size: 13px; margin-top: 10px; min-height: 18px; }
@@ -71,19 +68,24 @@
         .card .row1 { align-items: flex-start; }
         .card .selficon { flex: 0 0 auto; width: 30px; height: 30px; object-fit: contain; margin-top: 1px; }
         .card .titlewrap { flex: 1 1 auto; min-width: 0; }
-        .card .meta { font-size: 12px; color: #7a8a72; text-transform: capitalize; margin-top: 3px; }
+        .card .turnline { font-size: 12px; color: #8a8a8a; margin-top: 3px; }
+        .card .turnline:empty { display: none; }
         .scoreboard { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
-        .srow { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 9px;
-                padding: 5px 9px; border-radius: 8px; border: 1px solid transparent; }
-        .srow.turn { background: #12160f; }
-        .srow.self { background: #14210f; border-color: #35502a; }
+        .srow { display: grid; grid-template-columns: 22px 1fr auto auto; align-items: center; gap: 9px;
+                padding: 6px 9px; border-radius: 8px; border: 1px solid transparent; }
+        .srow.turn { background: #1d2c15; border-color: #46743a; }   /* green marks whose turn it is */
         .ficon { width: 20px; height: 20px; object-fit: contain; }
-        .sinfo { min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden; }
+        .sinfo { min-width: 0; display: flex; align-items: baseline; gap: 7px; overflow: hidden; }
         .sfaction { color: #cfcfcf; font-size: 13px; white-space: nowrap; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+        .srow.turn .sfaction { color: #eaffea; }
+        .srow.self .sfaction { color: #ffffff; font-weight: 600; }   /* your own seat: bold, with the (you) marker */
+        .syou { flex: 0 0 auto; white-space: nowrap; color: #ffffff; font-weight: 600; font-size: 13px; }
+        .syou:empty { display: none; }
         .splayer { color: #808080; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .srow.turn .sinfo::after { content: "●"; color: #6ac06a; font-size: 10px; align-self: center; }
-        .srow.self .sfaction { color: #eaffea; font-weight: 600; }
-        .svp { color: #e6e6e6; font-weight: 700; font-size: 13px; justify-self: end; white-space: nowrap; }
+        .srow.turn .splayer { color: #9a9a9a; }
+        .sturn { color: #79d279; font-size: 11px; font-weight: 700; justify-self: end; white-space: nowrap; letter-spacing: 0.2px; }
+        .svp { color: #e6e6e6; font-weight: 700; font-size: 13px; justify-self: end; white-space: nowrap; min-width: 40px; text-align: right; }
+        .svp:empty { min-width: 0; }
         .cardnote { color: #6a6a6a; font-size: 13px; margin-top: 11px; line-height: 1.5; }
         .cardfoot { display: flex; align-items: center; justify-content: space-between; margin-top: 13px; }
         .cardfoot .when { font-size: 12px; color: #5c5c5c; }
@@ -158,10 +160,6 @@
             const d = Math.floor(h / 24); return d + "d ago";
         }
 
-        function prettyMeta(meta) {
-            return (meta || "").replace(/[-_]/g, " ").trim();
-        }
-
         function parseStatus(s) {
             try { return JSON.parse(s || "{}").players || []; } catch (e) { return []; }
         }
@@ -189,31 +187,48 @@
                 card.className = "card" + (g.yourTurn ? " turn" : "");
                 const title = ((g.title && g.title.length ? g.title : "Game").replace(/\s*lobby\s*$/i, "").trim()) || "Game";
 
+                // Whose turn — shown as text under the title. When it's the viewer's own turn the
+                // "Your turn" badge already says so, so the line only names who we're waiting on.
+                const turnPlayers = players.filter(p => p.turn);
+                let turnLine = "";
+                if (!g.yourTurn) {
+                    if (turnPlayers.length === 1) turnLine = (turnPlayers[0].faction || "A player") + " to play";
+                    else if (turnPlayers.length > 1) turnLine = turnPlayers.length + " players to play";
+                }
+
                 let html = '<div class="row1">';
                 if (me) html += iconTag("selficon", me.icon);
-                html += '<div class="titlewrap"><div class="title"></div><div class="meta"></div></div>' +
+                html += '<div class="titlewrap"><div class="title"></div><div class="turnline"></div></div>' +
                         '<div class="badge ' + (g.yourTurn ? "turn" : "wait") + '">' + (g.yourTurn ? "Your turn" : "Waiting") + '</div>' +
                     '</div>';
                 if (players.length) html += '<div class="scoreboard"></div>';
                 else html += '<div class="cardnote">No live details yet — open the game once and players &amp; scores appear here.</div>';
-                html += '<div class="cardfoot"><span class="when">' + relTime(g.updated) + '</span>' +
+                html += '<div class="cardfoot"><span class="when"></span>' +
                         '<button class="playbtn">Play</button></div>';
                 card.innerHTML = html;
 
                 card.querySelector(".title").textContent = title;
-                card.querySelector(".meta").textContent = me ? ("You: " + me.faction) : prettyMeta(g.meta);
+                card.querySelector(".turnline").textContent = turnLine;
+                const when = relTime(g.updated);
+                card.querySelector(".when").textContent = when ? ("last move " + when) : "";
 
                 const sb = card.querySelector(".scoreboard");
                 if (sb) {
-                    players.slice().sort((a, b) => (b.vp || 0) - (a.vp || 0)).forEach(p => {
+                    // Sort by score; treat hidden (-1) and missing (undefined) VP alike so mixed
+                    // old/new statuses don't reorder arbitrarily.
+                    const vpOf = (p) => (typeof p.vp === "number" && p.vp >= 0) ? p.vp : -1;
+                    players.slice().sort((a, b) => vpOf(b) - vpOf(a)).forEach(p => {
                         const row = document.createElement("div");
                         row.className = "srow" + (p.turn ? " turn" : "") + (isMine(p) ? " self" : "");
                         row.innerHTML = iconTag("ficon", p.icon) +
-                            '<span class="sinfo"><span class="sfaction"></span><span class="splayer"></span></span>' +
-                            '<span class="svp"></span>';
-                        row.querySelector(".sfaction").textContent = (p.faction || "") + (isMine(p) ? " (you)" : "");
+                            '<span class="sinfo"><span class="sfaction"></span><span class="syou"></span><span class="splayer"></span></span>' +
+                            '<span class="sturn"></span><span class="svp"></span>';
+                        row.querySelector(".sfaction").textContent = p.faction || "";
+                        if (isMine(p)) row.querySelector(".syou").textContent = "(you)";
                         if (p.player && p.player !== p.faction) row.querySelector(".splayer").textContent = p.player;
-                        row.querySelector(".svp").textContent = (typeof p.vp === "number" && p.vp >= 0) ? (p.vp + " VP") : "";
+                        if (p.turn) row.querySelector(".sturn").textContent = "to play";
+                        const vp = vpOf(p);
+                        row.querySelector(".svp").textContent = vp >= 0 ? (vp + " VP") : "";
                         sb.appendChild(row);
                     });
                 }
