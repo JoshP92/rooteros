@@ -399,12 +399,16 @@ object GoodGame {
         // Push "it's your turn" to every account behind a newly-asked userId, via GameSeats -> PushSubs.
         // Fire-and-forget on the Akka dispatcher (the route returns immediately); dead subscriptions
         // (404/410) are pruned. Payload keys match pwa/sw.js: {title, body, url, tag}.
-        def notifyTurn(journalId : String, userIds : Set[String]) : Unit = Future {
-            val title = execute(journals.filter(_.id === journalId).map(_.name).result).headOption.getOrElse("Your game")
+        def notifyTurn(journalId : String, userIds : Set[String], iconId : Option[String] = None) : Unit = Future {
+            // The game name is the notification title (so each game is instantly distinguishable),
+            // "Your turn to play" is the body, and the acting faction's glyph is the icon when known.
+            val title = execute(journals.filter(_.id === journalId).map(_.name).result).headOption.filter(_.nonEmpty).getOrElse("RooterOS")
+            val iconField = iconId.filter(_.nonEmpty).map(i => "\"icon\":" + js("/faction-icon/" + i) + ",").getOrElse("")
             val payload =
                 "{" +
-                    "\"title\":" + js("Your turn") + "," +
-                    "\"body\":"  + js(title)       + "," +
+                    "\"title\":" + js(title)              + "," +
+                    "\"body\":"  + js("Your turn to play") + "," +
+                    iconField +
                     "\"url\":"   + js("/games")    + "," +
                     "\"tag\":"   + js(journalId)   +
                 "}"
@@ -791,8 +795,11 @@ object GoodGame {
                             execute(journalStatuses.filter(_.journalId === journalId).delete)
                             execute(journalStatuses += JournalStatus(journalId, waiting, status, System.currentTimeMillis()))
 
+                            // Glyph of the faction whose turn it is, for the notification icon.
+                            val turnIcon = """"turn":true[^}]*?"icon":"([^"]*)"""".r.findFirstMatchIn(status).map(_.group(1)).filter(_.nonEmpty)
+
                             if (WebPush.enabled && newlyAsked.nonEmpty)
-                                notifyTurn(journalId, newlyAsked)
+                                notifyTurn(journalId, newlyAsked, turnIcon)
 
                             complete(StatusCodes.Accepted)
                         }

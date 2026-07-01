@@ -97,6 +97,8 @@ object MetaMirror extends MetaGame {
     def validateFactionSeatingOptions(factions : $[F], options : $[O]) = validateFactionCombination(factions) && Meta.validateFactionSeatingOptions(factions, options)
 
     def factionName(f : F) = Meta.factionName(f)
+    override def factionScore(g : G, f : F) = Meta.factionScore(g, f)
+    override def factionIcon(g : G, f : F) = Meta.factionIcon(g, f)
     def factionElem(f : F) = Meta.factionElem(f)
     override def factionNote(f : F) : Elem = Meta.factionNote(f)
 

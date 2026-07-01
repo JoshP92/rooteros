@@ -560,7 +560,7 @@ class HRFMetaUI(val ui : HRFUI, val meta : MetaGame, delayMainMenu : Int)(implic
                 val playersJson = seating./{ f =>
                     val player = users.get(f).flatMap(i => enteredNames.get(i).orElse(preNames.get(i))).getOrElse(meta.factionName(f))
                     val isSelf = users.get(f) == HRF.user
-                    "{\"faction\":\"" + jesc(meta.factionName(f)) + "\",\"player\":\"" + jesc(player) + "\",\"vp\":" + meta.factionScore(game, f) + ",\"turn\":" + asked.has(f) + ",\"self\":" + isSelf + ",\"icon\":\"" + jesc(meta.factionIcon(f)) + "\"}"
+                    "{\"faction\":\"" + jesc(meta.factionLabel(game, f)) + "\",\"player\":\"" + jesc(player) + "\",\"vp\":" + meta.factionScore(game, f) + ",\"turn\":" + asked.has(f) + ",\"self\":" + isSelf + ",\"icon\":\"" + jesc(meta.factionIcon(game, f)) + "\"}"
                 }.join(",")
                 val body = turnIds.join(" ") + "\n{\"players\":[" + playersJson + "]}"
                 if (body != lastWaiting) {

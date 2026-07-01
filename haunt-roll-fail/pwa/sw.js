@@ -22,7 +22,7 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(self.clients.claim());
 });
 
-// Web Push. Payload is JSON: { title, body, url, tag }.
+// Web Push. Payload is JSON: { title, body, url, tag, icon }.
 self.addEventListener('push', (event) => {
     let data = {};
     try {
@@ -33,7 +33,7 @@ self.addEventListener('push', (event) => {
     const title = data.title || 'RooterOS';
     const options = {
         body: data.body || "It's your turn!",
-        icon: '/icon-192.png',
+        icon: data.icon || '/icon-192.png',   // faction glyph when provided, else the app icon
         badge: '/icon-192.png',
         tag: data.tag || 'rooteros',
         renotify: true,

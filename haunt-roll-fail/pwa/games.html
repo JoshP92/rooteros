@@ -75,10 +75,13 @@
         .scoreboard { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
         .srow { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 9px;
                 padding: 5px 9px; border-radius: 8px; border: 1px solid transparent; }
+        .srow.turn { background: #12160f; }
         .srow.self { background: #14210f; border-color: #35502a; }
         .ficon { width: 20px; height: 20px; object-fit: contain; }
-        .sfaction { color: #cfcfcf; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .srow.turn .sfaction::after { content: " ●"; color: #6ac06a; font-size: 11px; }
+        .sinfo { min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden; }
+        .sfaction { color: #cfcfcf; font-size: 13px; white-space: nowrap; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+        .splayer { color: #808080; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .srow.turn .sinfo::after { content: "●"; color: #6ac06a; font-size: 10px; align-self: center; }
         .srow.self .sfaction { color: #eaffea; font-weight: 600; }
         .svp { color: #e6e6e6; font-weight: 700; font-size: 13px; justify-self: end; white-space: nowrap; }
         .cardnote { color: #6a6a6a; font-size: 13px; margin-top: 11px; line-height: 1.5; }
@@ -201,8 +204,11 @@
                     players.slice().sort((a, b) => (b.vp || 0) - (a.vp || 0)).forEach(p => {
                         const row = document.createElement("div");
                         row.className = "srow" + (p.turn ? " turn" : "") + (p.self ? " self" : "");
-                        row.innerHTML = iconTag("ficon", p.icon) + '<span class="sfaction"></span><span class="svp"></span>';
+                        row.innerHTML = iconTag("ficon", p.icon) +
+                            '<span class="sinfo"><span class="sfaction"></span><span class="splayer"></span></span>' +
+                            '<span class="svp"></span>';
                         row.querySelector(".sfaction").textContent = (p.faction || "") + (p.self ? " (you)" : "");
+                        if (p.player && p.player !== p.faction) row.querySelector(".splayer").textContent = p.player;
                         row.querySelector(".svp").textContent = (typeof p.vp === "number" && p.vp >= 0) ? (p.vp + " VP") : "";
                         sb.appendChild(row);
                     });

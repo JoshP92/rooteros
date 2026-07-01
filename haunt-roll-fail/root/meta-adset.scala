@@ -173,6 +173,11 @@ object MetaAdset extends MetaGame {
             InfoResult("")
 
     def factionName(f : F) = f.name
+    // In Advanced Setup the seats are anonymous PlayerN slots; the real faction is drafted in-game.
+    // Resolve it via g.ptf so the dashboard shows the actual faction name, score and glyph.
+    override def factionLabel(g : G, f : F) = g.ptf.get(f)./(_.name).|(f.name)
+    override def factionScore(g : G, f : F) = g.ptf.get(f)./(rf => { implicit val game : Game = g ; rf.vp }).|(-1)
+    override def factionIcon(g : G, f : F) = g.ptf.get(f)./(_.style + "-glyph").|("")
     def factionElem(f : F) = f.name.hh
 
     override def glyph(g : G) : Option[String] = Meta.glyph(g)
