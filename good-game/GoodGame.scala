@@ -156,6 +156,20 @@ object GoodGame {
         def plain(s : String) = complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s))
         def redir(s : String) = redirect(s, StatusCodes.SeeOther)
 
+        // Fallback for missing image assets: return a 1x1 transparent PNG (200) instead of a 404,
+        // so the client's Cache.add() never rejects and the asset preloader can't hang forever
+        // on a single missing/unfinished asset.
+        val transparentPng = java.util.Base64.getDecoder.decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
+
+        def imageFallback = extractUnmatchedPath { p =>
+            val s = p.toString.toLowerCase
+            if (s.endsWith(".webp") || s.endsWith(".png") || s.endsWith(".jpg") || s.endsWith(".jpeg") || s.endsWith(".gif") || s.endsWith(".svg"))
+                complete(HttpEntity(ContentType(MediaTypes.`image/png`), transparentPng))
+            else
+                complete(StatusCodes.NotFound, "")
+        }
+
         val route = cors() {
             (pathPrefix("hrf")) {
                 optionalHeaderValueByName("Referer") { referer =>
@@ -163,7 +177,7 @@ object GoodGame {
                     // early fetch()/script/CSS requests) or when it comes from the
                     // configured host or localhost; still block cross-site hotlinking.
                     if (referer.forall(r => r.startsWith(url) || r.startsWith("http://localhost") || r.startsWith("http://127.0.0.1")))
-                        getFromDirectory(directory)
+                        getFromDirectory(directory) ~ imageFallback
                     else
                         complete(StatusCodes.NotFound, "")
                 }
