@@ -33,7 +33,9 @@
             }
 
             img {
-                transform: translateZ(1px);
+                /* `transform: translateZ(1px)` was removed here. On the global img selector it
+                   promoted EVERY image to its own GPU compositing layer, which on phones (big map
+                   + many pieces) exhausted GPU memory and blanked the board/map. */
                 image-rendering: -webkit-optimize-contrast;
             }
 
