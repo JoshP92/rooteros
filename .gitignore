@@ -1,0 +1,17 @@
+# Runtime good-game database — created by the "create" step (or run.ps1). Never commit.
+good-game-database.*
+*.lck
+
+# sbt / Scala build output.
+# NOTE: haunt-roll-fail/target/scala-2.13/hrf-fastopt.js is intentionally committed
+# (it's the linked game) and remains tracked. This only stops *new* build cruft.
+target/
+project/target/
+project/project/target/
+
+# Local run/build logs (from run.ps1 or manual sbt runs)
+good-game/create.log
+good-game/server.log
+
+# OS junk
+.DS_Store

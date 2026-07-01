@@ -159,7 +159,10 @@ object GoodGame {
         val route = cors() {
             (pathPrefix("hrf")) {
                 optionalHeaderValueByName("Referer") { referer =>
-                    if (referer.exists(_.startsWith(url)))
+                    // Serve when there is no Referer (browsers omit it for some
+                    // early fetch()/script/CSS requests) or when it comes from the
+                    // configured host or localhost; still block cross-site hotlinking.
+                    if (referer.forall(r => r.startsWith(url) || r.startsWith("http://localhost") || r.startsWith("http://127.0.0.1")))
                         getFromDirectory(directory)
                     else
                         complete(StatusCodes.NotFound, "")
