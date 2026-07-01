@@ -12,5 +12,10 @@ project/project/target/
 # Local run/build logs (from run.ps1 or manual sbt/java runs)
 good-game/*.log
 
+# VAPID private key for Web Push — must never be committed. The PUBLIC key is embedded
+# in the client (haunt-roll-fail/pwa/games.html); the private key is passed to the server
+# at runtime out-of-band.
+deploy/keys/
+
 # OS junk
 .DS_Store

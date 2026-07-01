@@ -1,0 +1,16 @@
+{
+    "name": "RooterOS — Root & friends",
+    "short_name": "RooterOS",
+    "description": "Play Root and other board games with friends. See all your active games and get notified when it's your turn.",
+    "start_url": "/games",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "icons": [
+        { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+        { "src": "/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ]
+}

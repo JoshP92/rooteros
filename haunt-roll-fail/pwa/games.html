@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <title>RooterOS — Your games</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; min-height: 100%;
+            background: #000; color: #c8c8c8;
+            font-family: system-ui, "Fira Sans", -apple-system, Segoe UI, Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+        .wrap { max-width: 640px; margin: 0 auto; padding: 18px 16px 40px; }
+        header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+        header img { width: 40px; height: 40px; }
+        header h1 { font-size: 22px; margin: 0; color: #e0e0e0; font-weight: 600; letter-spacing: 0.3px; }
+        .sub { color: #7a7a7a; font-size: 13px; margin: 0 0 18px 52px; }
+        .notif {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            background: #111; border: 1px solid #262626; border-radius: 12px;
+            padding: 12px 14px; margin-bottom: 18px;
+        }
+        .notif .txt { font-size: 13px; color: #9a9a9a; }
+        button {
+            font: inherit; cursor: pointer; border: 0; border-radius: 9px;
+            padding: 9px 14px; background: #2d5a2d; color: #eaffea; font-size: 14px; font-weight: 600;
+        }
+        button.secondary { background: #222; color: #bbb; }
+        button:disabled { opacity: 0.5; cursor: default; }
+        .games { display: flex; flex-direction: column; gap: 12px; }
+        .card {
+            display: block; text-decoration: none; color: inherit;
+            background: #101010; border: 1px solid #242424; border-radius: 14px;
+            padding: 14px 16px; transition: border-color 0.15s, background 0.15s;
+        }
+        .card:hover { border-color: #3a3a3a; background: #151515; }
+        .card.turn { border-color: #3f7d3f; background: #0f1a0f; }
+        .card .row1 { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .card .title { font-size: 17px; color: #e6e6e6; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .badge { flex: 0 0 auto; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+        .badge.turn { background: #2f6d2f; color: #eaffea; }
+        .badge.wait { background: #23232b; color: #8a8a9a; }
+        .card .row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+        .meta { font-size: 12px; color: #6f6f6f; text-transform: capitalize; }
+        .when { font-size: 12px; color: #5c5c5c; }
+        .empty { text-align: center; color: #6a6a6a; padding: 44px 20px; line-height: 1.6; font-size: 15px; }
+        .empty .big { font-size: 40px; margin-bottom: 8px; opacity: 0.7; }
+        .foot { margin-top: 28px; text-align: center; font-size: 11px; color: #444; }
+        .msg { font-size: 13px; margin-top: 10px; min-height: 18px; }
+        .msg.err { color: #c98; }
+        .msg.ok { color: #8a8; }
+        a.plain { color: #7a9; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header>
+            <img src="/icon-192.png" alt="" />
+            <h1>Your games</h1>
+        </header>
+        <p class="sub" id="sub">Games you join appear here automatically.</p>
+
+        <div class="notif" id="notifBox">
+            <div class="txt" id="notifTxt">Get a notification when it's your turn.</div>
+            <button id="notifBtn">Enable notifications</button>
+        </div>
+
+        <div class="games" id="games"></div>
+        <div class="empty" id="empty" style="display:none">
+            <div class="big">🎲</div>
+            No games yet.<br />
+            Open a game link a friend shared — it'll show up here, on every device where you install this app.
+        </div>
+
+        <div class="msg" id="msg"></div>
+        <div class="foot">RooterOS · this device is your account (<span id="acctId">…</span>)</div>
+    </div>
+
+    <script>
+        const VAPID_PUBLIC = "BDq8lSR-VX6GXyiDcXHIoSVpw6tmt5rj4PkzErlZxlz8bsbiHweSApMdZxrxEi915ALVMBT0zI600jgpV0WuThE";
+        const SERVER = location.origin;
+        const LS = "rooteros_account";
+
+        function urlB64ToUint8Array(base64String) {
+            const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+            const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+            const raw = atob(base64);
+            const out = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+            return out;
+        }
+
+        function getAccount() {
+            try { return JSON.parse(localStorage.getItem(LS)); } catch (e) { return null; }
+        }
+
+        async function ensureAccount() {
+            let acct = getAccount();
+            if (acct && acct.id && acct.secret) return acct;
+            const res = await fetch(SERVER + "/new-account", { method: "POST", body: "" });
+            const text = (await res.text()).trim().split("\n");
+            acct = { id: text[0], secret: text[1], name: "" };
+            localStorage.setItem(LS, JSON.stringify(acct));
+            return acct;
+        }
+
+        function relTime(ms) {
+            if (!ms) return "";
+            const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+            if (s < 60) return "just now";
+            const m = Math.floor(s / 60); if (m < 60) return m + "m ago";
+            const h = Math.floor(m / 60); if (h < 24) return h + "h ago";
+            const d = Math.floor(h / 24); return d + "d ago";
+        }
+
+        function prettyMeta(meta) {
+            return (meta || "").replace(/[-_]/g, " ").trim();
+        }
+
+        function render(games) {
+            const box = document.getElementById("games");
+            const empty = document.getElementById("empty");
+            box.innerHTML = "";
+            if (!games || games.length === 0) { empty.style.display = ""; return; }
+            empty.style.display = "none";
+            games.sort((a, b) => (b.yourTurn - a.yourTurn) || (b.updated - a.updated));
+            for (const g of games) {
+                const a = document.createElement("a");
+                a.className = "card" + (g.yourTurn ? " turn" : "");
+                a.href = SERVER + "/play/" + encodeURIComponent(g.meta) + "/" + encodeURIComponent(g.playSecret);
+                const title = g.title && g.title.length ? g.title : "Game";
+                a.innerHTML =
+                    '<div class="row1">' +
+                        '<div class="title"></div>' +
+                        '<div class="badge ' + (g.yourTurn ? "turn" : "wait") + '">' + (g.yourTurn ? "Your turn" : "Waiting") + '</div>' +
+                    '</div>' +
+                    '<div class="row2">' +
+                        '<div class="meta"></div>' +
+                        '<div class="when">' + relTime(g.updated) + '</div>' +
+                    '</div>';
+                a.querySelector(".title").textContent = title;
+                a.querySelector(".meta").textContent = prettyMeta(g.meta);
+                box.appendChild(a);
+            }
+        }
+
+        function setMsg(text, cls) {
+            const m = document.getElementById("msg");
+            m.textContent = text || "";
+            m.className = "msg" + (cls ? " " + cls : "");
+        }
+
+        async function loadGames() {
+            const acct = getAccount();
+            if (!acct) return;
+            try {
+                const res = await fetch(SERVER + "/my-games/" + acct.id + "/" + acct.secret);
+                if (!res.ok) { setMsg("Couldn't load games (" + res.status + ").", "err"); return; }
+                const games = await res.json();
+                render(games);
+            } catch (e) {
+                setMsg("Network error loading games.", "err");
+            }
+        }
+
+        async function enableNotifications() {
+            const btn = document.getElementById("notifBtn");
+            try {
+                if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+                    setMsg("This browser doesn't support notifications. On iPhone, add this app to your Home Screen first.", "err");
+                    return;
+                }
+                btn.disabled = true;
+                const perm = await Notification.requestPermission();
+                if (perm !== "granted") { setMsg("Notifications not allowed.", "err"); btn.disabled = false; return; }
+                const reg = await navigator.serviceWorker.ready;
+                let sub = await reg.pushManager.getSubscription();
+                if (!sub) {
+                    sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC)
+                    });
+                }
+                const acct = await ensureAccount();
+                const json = sub.toJSON();
+                const body = json.endpoint + "\n" + json.keys.p256dh + "\n" + json.keys.auth;
+                const res = await fetch(SERVER + "/push-subscribe/" + acct.id + "/" + acct.secret, { method: "POST", body });
+                if (res.ok) {
+                    setMsg("Notifications enabled on this device.", "ok");
+                    document.getElementById("notifTxt").textContent = "Notifications are on for this device.";
+                    btn.textContent = "Enabled ✓";
+                } else {
+                    setMsg("Couldn't save subscription (" + res.status + ").", "err");
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                setMsg("Notification setup failed: " + e.message, "err");
+                btn.disabled = false;
+            }
+        }
+
+        async function main() {
+            if ("serviceWorker" in navigator) {
+                try { await navigator.serviceWorker.register("/sw.js", { scope: "/" }); } catch (e) {}
+            }
+            const acct = await ensureAccount();
+            document.getElementById("acctId").textContent = acct.id.slice(0, 6);
+            // reflect existing notification state
+            try {
+                if ("Notification" in window && Notification.permission === "granted" && "serviceWorker" in navigator) {
+                    const reg = await navigator.serviceWorker.ready;
+                    const sub = await reg.pushManager.getSubscription();
+                    if (sub) {
+                        document.getElementById("notifTxt").textContent = "Notifications are on for this device.";
+                        const b = document.getElementById("notifBtn");
+                        b.textContent = "Enabled ✓"; b.disabled = true;
+                    }
+                }
+            } catch (e) {}
+            document.getElementById("notifBtn").addEventListener("click", enableNotifications);
+            await loadGames();
+            setInterval(loadGames, 20000);
+            document.addEventListener("visibilitychange", () => { if (!document.hidden) loadGames(); });
+        }
+        main();
+    </script>
+</body>
+</html>

@@ -19,6 +19,8 @@ RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 COPY haunt-roll-fail/index.html   /app/haunt-roll-fail/index.html
 COPY haunt-roll-fail/webp2        /app/haunt-roll-fail/webp2
 COPY haunt-roll-fail/fonts        /app/haunt-roll-fail/fonts
+# PWA / dashboard: manifest, service worker, dashboard page and icons (served at the root origin)
+COPY haunt-roll-fail/pwa          /app/haunt-roll-fail/pwa
 COPY haunt-roll-fail/background.png haunt-roll-fail/omen.png haunt-roll-fail/external-link.png haunt-roll-fail/question-mark.png  /app/haunt-roll-fail/
 # the linked Scala.js game
 COPY haunt-roll-fail/target/scala-2.13/hrf-fastopt.js  /app/haunt-roll-fail/target/scala-2.13/hrf-fastopt.js
