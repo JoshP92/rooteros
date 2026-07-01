@@ -1206,7 +1206,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
         }
 
         def emtb(s : String) = s.split('|').$./{
-            case " " => Image("empty-building" )(styles.building)
+            case " " => Image("empty-building")(styles.building)
             case "+" => Image("empty-building-card")(styles.building)
             case "1" => Image("empty-building-1")(styles.building)
             case "2" => Image("empty-building-2")(styles.building)
@@ -1291,9 +1291,6 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
 
                 val decree = Decree.all.map { d =>
                     val t = f.todo(d)
-                   
-                   
-                   
                     val o = f.done(d)
                     val r = t.diff(o).diff(o.diff(t)./(_ => Bird))
                     val c = t.diff(r)
@@ -1328,6 +1325,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                 Gap ~
                 FoxRabbitMouse./(s => Hint(s.name + " Base: " + f.suits.has(s).?("on the map").|("available") + ", draw 1 extra card", f.suits.has(s).?(Image(f.style + "-base-" + s.name, styles.building)).|(Image("empty-building-card", styles.building)))) ~
                 Gap ~
+                Image("empty-token-cost-1", styles.tokenHeight) ~
                 Hint("Sympathy\n" + f.all(Sympathy).num + " on the map\n" + f.pooled(Sympathy) + " available" + "\n\n" +  "1st Sympathy: cost 1 card"       , (Image((f.all(Sympathy).num >=  1).?(f.style + "-sympathy").|("empty-token"  ), styles.token))) ~
                 Hint("Sympathy\n" + f.all(Sympathy).num + " on the map\n" + f.pooled(Sympathy) + " available" + "\n\n" +  "2nd Sympathy: cost 1 card, 1 VP" , (Image((f.all(Sympathy).num >=  2).?(f.style + "-sympathy").|("empty-token-1"), styles.token))) ~
                 Hint("Sympathy\n" + f.all(Sympathy).num + " on the map\n" + f.pooled(Sympathy) + " available" + "\n\n" +  "3rd Sympathy: cost 1 card, 1 VP" , (Image((f.all(Sympathy).num >=  3).?(f.style + "-sympathy").|("empty-token-1"), styles.token))) ~
@@ -1366,7 +1364,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                     f.outcast.has(s).?(Image("outcast-" + s + f.hated.??("-hated"), styles.token))
                 ).join(Break) ~
                 Gap ~
-                Hint("Lost Souls\n" + f.lost.some./(l => FoxRabbitMouse./~(s => f.lost.count(_.suit == s) + " " + s.name).join("\n")).|("none"),
+                Hint("Lost Souls\n" + f.lost.some./(l => FoxRabbitMouse./(s => f.lost.count(_.suit == s) + " " + s.name).join("\n")).|("none"),
                 f.lost.some./(_./(_.suit)./(s => dt.CardSuitInfo(s)).merge.pointer.onClick.param(("view-lost-souls", f))).|("~~~".spn)) ~ Break ~
                 Div(Hint("Lizards\n" + f.acolytes.num + " acolyte".s(f.acolytes.num) + "\n" + f.all(f.warrior).num + " on the map\n" + f.pooled(f.warrior) + " available",
                     (f.acolytes.num > 0).?((Image(f.style + "-acolyte-x5", styles.wr) *** (f.acolytes.num / 5)) ~ (Image(f.style + "-acolyte", styles.wr) *** (f.acolytes.num % 5)) ~ Break) ~
@@ -1468,7 +1466,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                     ) ~
                     Div(Image("satchel-bottom-2" + (f.prowess == 2).??("-" + f.style), styles.ii) ~ Image("satchel-bottom", styles.ii) ~ Image("satchel-bottom-3" + (f.prowess == 3).??("-" + f.style), styles.ii) ~ Image("satchel-bottom-4" + (f.prowess == 4).??("-" + f.style), styles.ii), styles.satchel)
                 , xstyles.smaller85) ~
-                (game.current == f).?(Gap ~ 1.to(f.acted)./(_ => Image("action-black", styles.building)).take(f.acted) ~ (1.to(f.acted)./(_ => Image(f.style + "-action", styles.building)))).drop(f.acted) ~
+                (game.current == f).?(f.actionInfo(styles.building, styles.building)) ~
                 Div(Hint("Rats\n" + f.all(f.warrior).num + " on the map\n" + f.pooled(f.warrior) + " available",
                 &((Image(f.style + "-rat-x5", styles.wr) *** (f.all(f.warrior).num / 5)) ~ (Image(f.style + "-rat", styles.wr) *** (f.all(f.warrior).num % 5))) ~
                 &((Image(f.style + "-rat-empty", styles.wr) *** (f.pooled(f.warrior) % 5)) ~ (Image(f.style + "-rat-x5-empty", styles.wr) *** (f.pooled(f.warrior) / 5)))), styles.warline)
@@ -1522,7 +1520,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                 (Image(f.style + "-farm", styles.building) *** f.all(Farm).num) ~ (Image("empty-building", styles.building) *** f.pooled(Farm)) ~ Break ~ Gap ~
                 (Image(f.style + "-windmill", styles.building) *** f.all(Windmill).num) ~ (Image("empty-building", styles.building) *** f.pooled(Windmill)) ~ Break ~ Gap ~
                 game.candidates.intersect(factions).but(f)./(o => Image((o.style + "-" + o.as[WarriorFaction]./(_.warrior.id).|("vagabond")), styles.fund) ~ Image("attitude-" + f.foes.has(o).?("hostile").|("heart-full"), styles.attitude)).some./(_.join(Image("card-separator", styles.cardbackinfo)).div(styles.warline)).|("~~~" ~ Break) ~
-                (game.current == f).?(Gap ~ 1.to(f.acted)./(_ => Image("action-black", styles.building)).take(f.acted) ~ (1.to(f.acted)./(_ => Image(f.style + "-action", styles.building)))) ~
+                (game.current == f).?(Gap ~ 1.to(f.acted)./(_ => Image("action-black", styles.building)) ~ (f.acted.until(f.all(Farm).num + 2)./(_ => Image(f.style + "-action", styles.building)))) ~
                 Div(Hint("Hamsters\n" + f.all(f.warrior).num + " on the map\n" + f.pooled(f.warrior) + " available",
                 &((Image(f.style + "-hamster-x5", styles.wr) *** (f.all(f.warrior).num / 5)) ~ (Image(f.style + "-hamster", styles.wr) *** (f.all(f.warrior).num % 5))) ~
                 &((Image(f.style + "-hamster-empty", styles.wr) *** (f.pooled(f.warrior) % 5)) ~ (Image(f.style + "-hamster-x5-empty", styles.wr) *** (f.pooled(f.warrior) / 5)))), styles.warline)
@@ -1570,8 +1568,8 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                 }.join(Break) ~
                 Gap ~
                 (
-                    (f.deck.num.formatted("%2d").hl.styled(styles.doubleFigures) ~ Image("deck-frog", styles.pile)).pointer.onClick.param("view-frog-deck", f) ~
-                    (f.pile.num.formatted("%2d").hl.styled(styles.doubleFigures) ~ Image("pile-" + f.pile.any.?(f.pile.last.suit).|("empty"), styles.pile)).pointer.onClick.param("view-frog-discard", f)
+                    (f.deck.num.formatted("%2d").hl.styled(styles.doubleFigures) ~ Image("deck-frog", styles.pile)).&.pointer.onClick.param("view-frog-deck", f) ~
+                    (f.pile.num.formatted("%2d").hl.styled(styles.doubleFigures) ~ Image("pile-" + f.pile.any.?(f.pile.last.suit).|("empty"), styles.pile)).&.pointer.onClick.param("view-frog-discard", f)
                 ).div(xstyles.smaller75) ~
                 (game.current == f).?(Gap ~ 1.to(3)./(_ => Image("action-black", styles.building)).take(f.acted) ~ (1.to(3)./(_ => Image(f.style + "-action", styles.building))).drop(f.acted)) ~
                 Div(Hint("Frogs\n" + f.all(f.warrior).num + " on the map\n" + f.pooled(f.warrior) + " available",
@@ -1586,13 +1584,13 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                     Image("outcast-" + s + false.??("-hated"), styles.token) ~
                     p.times(Image(f.style + "-peaceful", styles.token)) ~
                     m.times(Image(f.style + "-militant", styles.token)) ~
-                    (Image("empty-token" + f.latent(s)(i - p - m).is[MilitantBBB].??("-militant") + (i == 2).??("-card"), styles.token)).drop(p + m)
+                    (Image("empty-token", styles.token) :: Image("empty-token-1", styles.token) :: Image("empty-token-2-card", styles.token) :: Image("empty-token-3", styles.token)).drop(p + m)
 
                 }.join(Break) ~
                 Gap ~
                 (
-                    (f.deck.num.formatted("%2d").hl.styled(styles.doubleFigures) ~ Image("deck-frog", styles.pile)).pointer.onClick.param("view-frog-deck", f) ~
-                    (f.pile.num.formatted("%2d").hl.styled(styles.doubleFigures) ~ Image("pile-" + f.pile.any.?(f.pile.last.suit).|("empty"), styles.pile)).pointer.onClick.param("view-frog-discard", f)
+                    (f.deck.num.formatted("%2d").hl.styled(styles.doubleFigures) ~ Image("deck-frog", styles.pile)).&.pointer.onClick.param("view-frog-deck", f) ~
+                    (f.pile.num.formatted("%2d").hl.styled(styles.doubleFigures) ~ Image("pile-" + f.pile.any.?(f.pile.last.suit).|("empty"), styles.pile)).&.pointer.onClick.param("view-frog-discard", f)
                 ).div(xstyles.smaller75) ~
                 (game.current == f).?(Gap ~ 1.to(3 + f.extra)./(_ => Image("action-black", styles.building)).take(f.acted) ~ (1.to(3)./(_ => Image(f.style + "-action", styles.building)) ++ (0.until(f.extra)./(_ => Image("action-bird", styles.building)))).drop(f.acted)) ~
                 Div(Hint("Frogs\n" + f.all(f.warrior).num + " on the map\n" + f.pooled(f.warrior) + " available",
@@ -1607,7 +1605,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                     Image("outcast-" + s + false.??("-hated"), styles.token) ~
                     p.times(Image(f.style + "-peaceful", styles.token)) ~
                     m.times(Image(f.style + "-militant", styles.token)) ~
-                    (Image("empty-token" + f.latent(s)(i - p - m).is[MilitantAAA].??("-militant") + (i == 2).??("-card"), styles.token)).drop(p + m)
+                    (Image("empty-token", styles.token) :: Image("empty-token-1", styles.token) :: Image("empty-token-2-card", styles.token) :: Image("empty-token-3", styles.token)).drop(p + m)
 
                 }.join(Break) ~
                 Gap ~
@@ -1620,9 +1618,1146 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                 &((Image(f.style + "-frog-x5", styles.wr) *** (f.all(f.warrior).num / 5)) ~ (Image(f.style + "-frog", styles.wr) *** (f.all(f.warrior).num % 5))) ~
                 &((Image(f.style + "-frog-empty", styles.wr) *** (f.pooled(f.warrior) % 5)) ~ (Image(f.style + "-frog-x5-empty", styles.wr) *** (f.pooled(f.warrior) / 5)))), styles.warline)
 
-            case f : LegalAAA if chapter.has("deck") =>
-                showOverlay(overlayScrollX(("Edicts").styled(f).div ~
-                    EdictsAAA.deck./{ d => OnClick(d, Div(Image(d.id, styles.card), xstyles.info, xstyles.xx, xstyles.chm, xstyles.chp, styles.inline, styles.margined)) }.merge), onClick)
+            case f : LegalAAA =>
+                f.all(ConvenedAAA).num.times(Image(f.style + "-convened", styles.token)) ~ f.all(AssemblyAAA).num.times(Image(f.style + "-assembly", styles.token)) ~ (f.pooled(AssemblyAAA) + f.pooled(ConvenedAAA) - 12).times(Image("empty-token", styles.token)) ~ Break ~ Gap ~
+                f.all(CommuneAAA).num.times(Image(f.style + "-commune", styles.building)) ~ f.pooled(CommuneAAA).times(Image("empty-building", styles.building)) ~ Break ~ Gap ~
+                Div(Hint("Bats\n" + f.all(f.warrior).num + " on the map\n" + f.pooled(f.warrior) + " available",
+                &((Image(f.style + "-bat-x5", styles.wr) *** (f.all(f.warrior).num / 5)) ~ (Image(f.style + "-bat", styles.wr) *** (f.all(f.warrior).num % 5))) ~
+                &((Image(f.style + "-bat-empty", styles.wr) *** (f.pooled(f.warrior) % 5)) ~ (Image(f.style + "-bat-x5-empty", styles.wr) *** (f.pooled(f.warrior) / 5)))), styles.warline)
+
+            case f : AbductAAA =>
+                f.phases./(p => (Image(f.style + "-captain-" + p, styles.wr) ~ " " ~ f.characters(p).name.hl).div(styles.minister) ~ (f.items(p)./(i => Image(i.imgid, styles.ii)) ++ f.incoming(p)./(i => Image(i.exhaust.imgid, styles.ii))).merge.div(xstyles.smaller85)) ~
+                Div(Hint("Skunks\n" + f.all(f.warrior).num + " on the map\n" + f.pooled(f.warrior) + " available",
+                &((Image(f.style + "-skunk-x5", styles.wr) *** (f.allr(f.warrior).num / 5)) ~ (Image(f.style + "-skunk", styles.wr) *** (f.allr(f.warrior).num % 5))) ~
+                &((Image(f.style + "-skunk-empty", styles.wr) *** (f.pooled(f.warrior) % 5)) ~ (Image(f.style + "-skunk-x5-empty", styles.wr) *** (f.pooled(f.warrior) / 5)))), styles.warline) ~
+                Gap ~ Gap ~ f.bag./(i => Image(i.exhaust.imgid, styles.ii)).merge.div(xstyles.smaller75)
+
+            case f : Hero =>
+                val track = f.inv.intersect(Item.track).sort./(_.item)
+                val satchel = f.inv.diff(Item.track).sort
+                val columns = 3 + track.count(Bag)
+                val (row1, row2) = satchel.splitAt((satchel.num + 1) / 2)
+
+                Gap ~
+                f.quests.some./(_./(s => Image("quest-" + s.name, styles.token)).merge).|("~~~") ~ Break ~
+                game.candidates./~(o => f.attitude.get(o)).but(Indifferent).any.?(Div(game.candidates./~(o => f.attitude.get(o).but(Indifferent)./(a => &(Image((o.style + "-" + o.asInstanceOf[WarriorFaction].warrior.id), styles.fund) ~ (a match {
+                    case Hostile => Image("attitude-hostile", styles.attitude)
+                    case Amiable => Image("attitude-heart-full", styles.attitude) ~ (Image("attitude-heart-empty", styles.attitude) *** f.aid.get(o).|(0))
+                    case Friendly => (Image("attitude-heart-full", styles.attitude) *** 2) ~ (Image("attitude-heart-empty", styles.attitude) *** f.aid.get(o).|(0))
+                    case Allied => (Image("attitude-heart-full", styles.attitude) *** 3) ~ Empty
+                })))).join(Image("card-separator", styles.cardbackinfo)), styles.warline)).|("~~~" ~ Break) ~
+                Gap ~
+                Div(
+                    track.but(Bag).any.?(Div(track.but(Bag)./(i => Image(i.imgid, styles.ii)).merge)) ~
+                    Div((Image("satchel-top", styles.ii) *** columns).merge, styles.satchel) ~
+                    Div(row1./(i => Image(i.imgid, styles.ii)) ~ (Image("item-x-placeholder", styles.ii) *** (columns - row1.num))) ~
+                    Div(row2./(i => Image(i.imgid, styles.ii)) ~ (Image("item-x-placeholder", styles.ii) *** (columns - row2.num))) ~
+                    Div((Image("satchel-bottom", styles.ii) *** columns).merge, styles.satchel) ~
+                    track.%(_ == Bag).any.?(Div((Image("item-x-spacer", styles.ii) *** 3) ~ track.%(_ == Bag)./(i => Image(i.imgid, styles.ii))))
+                , xstyles.smaller85)
+        }
+
+        val s = Gap ~ title ~ vphand ~ fs.div(styles.warline) ~ effects ~ trade
+
+        container.replace(s.div(xstyles.fillHeight).pointer.onClick.param(f), nameres, {
+            case List(f, "fun-name") =>
+                currentGame.ui.funNames = currentGame.ui.funNames.not
+                updateStatus()
+
+            case List(f, x) => onClick(x)
+            case f : Faction => onFactionStatus(f, false)
+            case x => onClick(x)
+        })
+
+        if (f == game.current)
+            container.attach.parent.style.outline = "0.2ch solid #aaaaaa"
+        else
+        if (game.highlightFaction.has(f))
+            container.attach.parent.style.outline = "0.2ch dashed #aaaaaa"
+        else
+            container.attach.parent.style.outline = ""
+    }
+
+    case class CardPeekByDesc(self : F) extends UndoDescriptor {
+        def elem(count : Int) = "card peek".s(count).spn(xstyles.error) ~ " by " ~ factionElem(self)
+    }
+
+    override def describeActionForUndo(a : ExternalAction, self : |[F]) : $[UndoDescriptor] = $(
+        a.unwrap @@ {
+            case CodebreakersAction(f, _, _) => CardPeekByDesc(f)
+            case a : ForcedAction =>
+                a.productIterator.$.of[F] @@ {
+                    case f :: _ if self.has(f).not => ActionByDesc(f)
+                    case _ => NoDesc
+                }
+            case a => NoDesc
+        }
+    ).but(NoDesc).some.|(super.describeActionForUndo(a, self))
+
+    def overlayScrollX(e : Elem) = overlayScroll(e)(styles.seeThroughInner).onClick
+    def overlayFitX(e : Elem) = overlayFit(e)(styles.seeThroughInner).onClick
+
+    def showOverlay(e : Elem, onClick : Any => Unit) {
+        overlayPane.vis()
+
+        overlayPane.replace(e, resources, onClick)
+    }
+
+    def tokenLine(id : Int => String, count : Int, rest : Int, empty : Int => String = _ => "empty-token") =
+        0.until(count + rest)./(n => Image((n < count).?(id(n)).|(empty(n)))(styles.token3x)).merge.div
+
+    def buildingLine(id : Int => String, count : Int, rest : Int, empty : Int => String = _ => "empty-building") =
+        0.until(count + rest)./(n => Image((n < count).?(id(n)).|(empty(n)))(styles.building3x)).merge.div
+
+    def itemLine(id : Int => String, count : Int, total : Int, empty : Int => String = _ => "item-x-placeholder") =
+        0.until(total)./(n => Image((n < count).?(id(n)).|(empty(n)))(styles.iii)).merge.div
+
+    def warriorLine(id : String, count : Int, rest : Int) = helper.&(
+        helper.&((Image(id + "-x5"   , styles.wr3x) *** (count / 5)) ~ (Image(id              , styles.wr3x) *** (count % 5))) ~
+        helper.&((Image(id + "-empty", styles.wr3x) *** (rest  % 5)) ~ (Image(id + "-x5-empty", styles.wr3x) *** (rest  / 5)))
+    )
+
+    def warriorLineExtra(id : String, al : String, count : Int, extra : Int, rest : Int) = helper.&(
+        helper.&((Image(id + "-x5"   , styles.wr3x) *** (count / 5)) ~ (Image(id              , styles.wr3x) *** (count % 5))) ~
+        helper.&((Image(al + "-x5"   , styles.wr3x) *** (extra / 5)) ~ (Image(al              , styles.wr3x) *** (extra % 5))) ~
+        helper.&((Image(id + "-empty", styles.wr3x) *** (rest  % 5)) ~ (Image(id + "-x5-empty", styles.wr3x) *** (rest  / 5)))
+    )
+
+    def warriorLineNoGroup(id : String, count : Int, rest : Int) = helper.&(
+        helper.&(Image(id, styles.wr3x) *** count) ~ helper.&(Image(id + "-empty", styles.wr3x) *** rest)
+    )
+
+    def onFactionStatus(implicit faction : Faction, isMore : Boolean, chapter : |[String] = None) : Unit = {
+        def desc(l : Any*) = game.desc(l : _*).div
+        def more(l : Any*) = isMore.?(desc(l : _*))
+        def less(l : Any*) = isMore.not.?(desc(l : _*))
+        def moreGap = isMore.?(HGap)
+        def lessGap = isMore.not.?(HGap)
+
+        def info() =
+            less(("More Info".hh).div.div(xstyles.choice)(xstyles.xx)(xstyles.chm)(xstyles.chp)(xstyles.thu)(xlo.fullwidth)(new CustomStyle(rules.width("60ex"))(new StylePrefix("test")){}).pointer.onClick.param(faction, !isMore)) ~
+            more(("Less Info".hh).div.div(xstyles.choice)(xstyles.xx)(xstyles.chm)(xstyles.chp)(xstyles.thu)(xlo.fullwidth)(new CustomStyle(rules.width("60ex"))(new StylePrefix("test")){}).pointer.onClick.param(faction, !isMore))
+
+        faction @@ {
+            case f : Underground if chapter.has("ministers") =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Ministers".hl.larger.larger) ~
+                    f.ministers./{ minister =>
+                        val swayed = f.swayed.has(minister)
+                        val lost = swayed.not && (f.swayed ++ f.retired).%(_.rank == minister.rank).num >= 3
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        desc() ~
+                        desc(minister.name.styled(f).larger ~ swayed.?(FigureSpace ~ Image(f.style + "-crown-" + minister.rank, styles.crown)) ~ lost.?(FigureSpace ~ Image(f.style + "-crown-empty", styles.crown))) ~
+                        (swayed.not && lost.not).?(desc(minister.rank.times(dt.CardBackInfo).merge, dt.Arrow, (minister.rank - 1).vp)) ~
+                        HGap ~
+                        Image("info:minister-" + minister.short)(styles.card) ~
+                        HGap ~
+                        desc(minister.long(f)) ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap
+                    } ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, "moods") => onFactionStatus(f, false, Some("moods"))
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : Underground if chapter.none =>
+                val sway = min(clearings.%(f.present).num, f.hand.num)
+                val potential = f.ministers.diff(f.swayed).%(_.rank <= sway).%(m => (f.swayed ++ f.retired).%(_.rank == m.rank).num < 3)
+
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Recruit".styled(styles.phase), dt.Arrow, "Assembly".styled(styles.phase), dt.Arrow, "Parliament".styled(styles.phase), dt.Arrow, "Sway".styled(styles.phase), dt.Arrow, "Return Revealed".styled(styles.phase), dt.Arrow, "Craft".styled(styles.phase)) ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    more("Assembly".hl.larger) ~
+                    more("Two times", "move".hh, Comma, "", "battle".hh, Comma, "", "build".hh, Comma, "", "recruit".hh, "or", "dig".hh, Dot) ~
+                    moreGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Tunnels".hl.larger) ~
+                    more("Tunnel".hl.larger, "is a", "token".hh, Comma, "it", "connects".hh, "the", Burrow(f), "to the clearing it is in.") ~
+                    more("Can be", "dug".hh, "in any clearing discarding a matching", "card".hh, "during", "Assembly".f, Dot) ~
+                    more("If all", Tunnel.sof(f), "are on the map, an old one can be rerouted when digging.") ~
+                    tokenLine(_ => f.style + "-tunnel", f.all(Tunnel).num, f.pooled(Tunnel)) ~
+                    f.all(Tunnel).some./(l => desc("Connect" ~ (f.all(Tunnel).num == 1).??("s"), Burrow(f), "to", l./(_.elem).commaAnd)) ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    more("Parlament".hl.larger) ~
+                    more("Take an action of each", "minister".hh, "in any order.") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Sway".hl.larger) ~
+                    more("Can sway one", "Minister".f, "per turn,") ~
+                    more("revealing", "cards".hh, "up to his", "rank".hh, Comma) ~
+                    more("each card matching a different", "clearing".hh, "where present.") ~
+                    more("Gain", "1".styled(styles.vp) ~ "/" ~ "2".styled(styles.vp) ~ "/" ~ "3".styled(styles.vp) ~ " " ~ "vp".styled(styles.vp) ~ " and a " ~ "Crown".hh ~ " swaying.") ~
+                    clearings.exists(f.present).?(
+                        moreGap ~
+                        moreGap ~
+                        moreGap ~
+                        moreGap ~
+                        desc("Presence in", clearings.%(f.present)./(_.elem).comma, f.hand.any.$("and", f.hand.num.hl, "card".s(f.hand.num), "in hand", potential.any.?(Comma).|(Dot))) ~
+                        potential.any.?(desc("might".hh, "be able to sway",
+                            $(
+                                (potential.exists(_.rank == 2)).?("a " ~ "Squire".f),
+                                (potential.exists(_.rank == 3)).?("a " ~ "Noble".f),
+                                (potential.exists(_.rank == 4)).?("a " ~ "Lord".f)
+                            ).flatten.commaOr, Dot
+                        ))
+                    ) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Ministers".hl.larger) ~
+                    $(2, 3, 4).%(r => f.swayed.exists(_.rank == r))./(r =>
+                        desc(
+                            isMore.?(r @@ {
+                                case 2 => "Squires:".hh
+                                case 3 => "Nobles:".hh
+                                case 4 => "Lords:".hh
+                            }),
+                            f.swayed.%(_.rank == r)./(m => m.of(f).larger ~ FigureSpace ~ Image(f.style + "-crown-" + m.rank, styles.crown)).join(FigureSpace ~ FigureSpace ~ FigureSpace)
+                        )
+                    ) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Crowns".hl.larger) ~
+                    desc(f.ministers.diff(f.swayed).diff(f.retired)./(m => Image(f.style + "-crown-" + m.rank, styles.crown)).merge) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    more("Buildings".hl.larger) ~
+                    more("Can build in a", "ruled".hh, "clearing,") ~
+                    more("revealing".f, "a", "matching".hh, "card during", "Assembly".f, Comma) ~
+                    more("or", "any".hh, "card with", Foremole.of(f), Dot) ~
+                    more("Both", Citadel.sof(f), "and", Market.sof(f), "allow", "crafting".hh, Dot) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Citadels".hl.larger) ~
+                    more("Citadel".hl.larger, "is a", "building".hh, Comma, "it increases", "recruiting".hh, Dot) ~
+                    buildingLine(_ => f.style + "-citadel", f.all(Citadel).num, f.pooled(Citadel), i => "empty-building-mole-" + (i > 0).?(2).|(1)) ~
+                    f.all(Citadel).use { l =>
+                        val r = $(1, 2, 4, 6)(l.num)
+                        less("Recruit", r.hlb.larger, "Mole".s(r).f,                                          l.any.?(Comma), l.any.?((           "craft", l./(_.asset)./(dt.CraftSuit).merge))) ~
+                        more("Recruit", r.hlb.larger, "Mole".s(r).f, "in", Burrow(f), "at the start of turn", l.any.?(Comma), l.any.?(("provide", "craft", l./(_.asset)./(dt.CraftSuit).merge)))
+                    } ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Markets".hl.larger) ~
+                    more("Market".hl.larger, "is a", "building".hh, Comma, "it provides additional", "card".hh, "draw.") ~
+                    buildingLine(_ => f.style + "-market", f.all(Market).num, f.pooled(Market), _ => "empty-building-card") ~
+                    f.all(Market).use { l =>
+                        val r = 1 + l.num
+                        less("Draw", r.hlb.larger, "card".s(r).hh,                       l.any.?(Comma), l.any.?((           "craft", l./(_.asset)./(dt.CraftSuit).merge))) ~
+                        more("Draw", r.hlb.larger, "card".s(r).hh, "at the end of turn", l.any.?(Comma), l.any.?(("provide", "craft", l./(_.asset)./(dt.CraftSuit).merge)))
+                    } ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    more("The Price of Failure".hl.larger) ~
+                    more("If", "any".hh, "number of", Citadel.sof(f), "or", Market.sof(f), "are removed,") ~
+                    more("the highest ranking", "Minister".f, "goes away,") ~
+                    more("and a", "random card".hh, "is discarded.") ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    moreGap ~
+                    more("Revealed Cards".hl.larger) ~
+                    more("All revealed", "Bird".styled(Bird), "cards are discarded,") ~
+                    more("the rest goes back to the hand.") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Moles".hl.larger) ~
+                    more("Moles".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.at(f.burrow).num.hl.larger, "in", Burrow(f), Comma, f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLineExtra(f.style + "-mole", f.style + "-young", f.all(f.warrior).num, f.at(f.burrow).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    ("Ministers".styled(f)).div.div(xstyles.choice)(xstyles.xx)(xstyles.chm)(xstyles.chp)(xstyles.thu)(xlo.fullwidth)(new CustomStyle(rules.width("60ex"))(new StylePrefix("test")){}).pointer.onClick.param(f, "ministers") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, "ministers") => onFactionStatus(f, false, Some("ministers"))
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+
+            case f : Horde if chapter.none =>
+                showOverlay(overlayScrollX((
+
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Raze".styled(styles.phase), dt.Arrow, "Recruit".styled(styles.phase), f.region.none.$(dt.Arrow, "Anoint".styled(styles.phase)), dt.Arrow, "Mood".styled(styles.phase), dt.Arrow, "Craft".styled(styles.phase), dt.Arrow, "Command".styled(styles.phase), dt.Arrow, "Advance".styled(styles.phase), dt.Arrow, "Incite".styled(styles.phase), dt.Arrow, "Oppress".styled(styles.phase)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Oppress".hl.larger) ~
+                    more("Oppress".hl.larger, "scores", "clearings".hh, " where no other faction is present.") ~
+                    more(1.hl, "or", 2.hl, "clearings", Dash, 1.vp, Semicolon, 3.hl, "or", 4.hl, Dash, 2.vp, Semicolon, "if", 5.hl, Dash, 3.vp, Semicolon, 6.hl, "or more", Dash, 4.vp) ~
+                    clearings.%(f.present).%(f.rules).%(c => f.enemies.forall(_.present(c).not)).use(l => desc("Oppressing".f, l.any.?(l.num.hlb.larger).|("no".spn), "clearing".s(l.num), l.any.?((l.num > 1).?(Colon).|(Comma)), l./(_.elem).commaAnd)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("The".spn.larger, "Warlord".hl.larger) ~
+                    more("The".spn.larger, "Warlord".hl.larger, "is a", "warrior".hh, Semicolon, "if killed in", "battle".hh, Comma, "a new one is annointed next turn") ~
+                    more("If alive, each turn recruits as many", "Rats".f, "as his", "Prowess".f, Dot) ~
+                    Image(f.style + "-warlord" + f.region.none.??("-empty"), styles.building3x) ~
+                    f.region./(r =>
+                        if (f.canPlace(r))
+                            desc("The", "Warlord".f, "recruits", f.prowess.hlb.larger, "Rat".s(f.prowess).f)
+                        else
+                            desc("The", "Warlord".f, "won't recruit because of the", f.cantPlaceReason(r))
+                    ).||(f.all(Rat).distinct.%(f.canPlace).some./(l =>
+                        desc("The", "Warlord".f, "will replace", (l.num > 1).?("any").|("a"), "Rat".f, "in", l./(_.elem).commaOr, "next turn")
+                    )).|(
+                        desc("The", "Warlord".f, "will reappear anywhere on the map next turn")
+                    ) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    more("Mood".hl.larger, "provides a different bonus to the", "Warlord".f, "each turn.") ~
+                    more("Items".hh, "in the", "Hoard".f, "prevent certain", "Moods".f, Dot) ~
+                    f.region.any.?(
+                        less("Mood".hl.larger) ~
+                        Image("info:mood-" + f.mood)(styles.illustration) ~
+                        f.mood.name.styled(f).larger ~
+                        desc(f.mood.long(f))
+                    ) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Mob".hl.larger) ~
+                    more("Mob".hl.larger, "is a", "token".hh, Comma, "it", "razes".f, "other", "tokens".hh, "and", "buildings".hh ~ ", and gets", "items".hh, "from", "ruins".hh, Dot) ~
+                    more("Can be", "incited".f, "with a "~ "card".hh, Comma, "then it can spread by itself.") ~
+                    tokenLine(_ => f.style + "-mob", f.all(Mob).num, f.pooled(Mob)) ~
+                    f.all(Mob).some.%(_ => f.pool(Mob))./(l => clearings.diff(l).%(c => f.connectedFor(c).intersect(l).any).%(f.canPlace)).map { l =>
+                        desc("Can spread to", l./(_.elem).commaOr)
+                    } ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Strongholds".hl.larger) ~
+                    more("Stronghold".hl.larger, "is a", "building".hh, Comma, "it recruits a", Rat.of(f), "each turn, allows", "crafting".hh, Dot) ~
+                    more("Can be built with a", "card".hh, "in a", "ruled".hh, "clearing", Dot) ~
+                    more("Items".hh, "can be", "crafted".hh, "either for", "victory points".styled(styles.vp), "or to put in the", "Hoard".f, Dot) ~
+                    buildingLine(_ => f.style + "-stronghold", f.all(Stronghold).num, f.pooled(Stronghold)) ~
+                    f.all(Stronghold).some.map(l =>
+                        desc("Recruit", l.num.hlb.larger, "Rat".s(l.num).f, Comma, "craft", l./(_.asset)./(dt.CraftSuit).merge)
+                    ) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("The".spn.larger, "Hoard".hl.larger) ~
+                    more("The".spn.larger, "Hoard".hl.larger, "stores", "items".hh, "that increase the number of actions.") ~
+                    less("Command".f.larger, Dash, f.command.hlb.larger, "action".s(f.command), "to", "Command the Hundreds".styled(styles.phase)) ~
+                    more("Command".hl.larger, "grants", f.command.hlb.larger, "action".s(f.command), "each turn to", "build".hh, "or", "move".hh, "or", "battle".hh, Dot) ~
+                    more(Bag.name.spn(styles.itemInfo), Comma, Boots.name.spn(styles.itemInfo), Comma, Coins.name.spn(styles.itemInfo), "further increase it.") ~
+                    itemLine(n => "item-" + f.hoard.command(n).name, f.hoard.command.num, 4, n => "item-x-placeholder" + $("-2p", "-0p", "-3p", "-4p")(n)) ~
+                    less("Prowess".f.larger, Dash, f.prowess.hlb.larger, "action".s(f.prowess), "to", "Advance the Warlord".styled(styles.phase)) ~
+                    more("Prowess".hl.larger, "grants", f.prowess.hlb.larger, "action".s(f.prowess), "each turn to", "move".hh, "and then", "battle".hh, "with the", "Warlord".f) ~
+                    more($(Sword, Hammer, Teapot, Crossbow)./(_.name.spn(styles.itemInfo)).comma, "further increase it.") ~
+                    itemLine(n => "item-" + f.hoard.prowess(n).name, f.hoard.prowess.num, 4, n => "item-x-placeholder" + $("-2p", "-0p", "-3p", "-4p")(n)) ~
+                    more("Apart from "~ "crafting", "with", "Strongholds".f, Comma, "items".hh, "can also be obtained") ~
+                    more("by", "razing".f, "ruins".hh, "or", "looting".f, "other factions in", "battle".hh, Dot) ~
+                    HGap ~
+                    HGap ~
+                    game.ruins.values./~(_.items).$.sortBy(i => Item.order.indexOf(i)).distinct.diff(f.fromRuins).some./(l =>
+                        desc(l./(_.name.spn(styles.itemInfo)).comma, (l.num > 1 || l.diff($(Boots, Coins)).none).?("are").|("is"), "available in the", "ruins".hh, Dot)
+                    ) ~
+                    factions.but(f).%(_.forTrade.any)./(e => desc(e.forTrade./(_.item.name.spn(styles.itemInfo)).comma, "can be", "looted".f, "from", e.elem, Dot)).merge ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Rats".hl.larger) ~
+                    more("Rats".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh, Dot) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLine(f.style + "-rat", f.all(f.warrior).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    ("Moods".styled(f)).div.div(xstyles.choice)(xstyles.xx)(xstyles.chm)(xstyles.chp)(xstyles.thu)(xlo.fullwidth)(new CustomStyle(rules.width("60ex"))(new StylePrefix("test")){}).pointer.onClick.param(f, "moods") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, "moods") => onFactionStatus(f, false, Some("moods"))
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : Horde if chapter.has("moods") =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Moods".hl.larger) ~
+                    Mood.all./(mood =>
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        desc() ~
+                        desc((mood.name.styled(f).larger ~ mood.item.but(Torch)./(i => FigureSpace ~ Image("item-" + i.name + (f.hoard.command ++ f.hoard.prowess).has(i).??("-exhausted"), styles.ii))).div(xlo.flexhcenter)) ~
+                        HGap ~
+                        Image("info:mood-" + mood)(styles.illustration) ~
+                        desc(mood.long(f)) ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap
+                    ) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, "moods") => onFactionStatus(f, false, Some("moods"))
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : Expedition if chapter.none =>
+                showOverlay(overlayScrollX((
+
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Encamp".styled(styles.phase), dt.Arrow, "Decamp".styled(styles.phase), dt.Arrow, "Recruit".styled(styles.phase), dt.Arrow, "Craft".styled(styles.phase), dt.Arrow) ~
+                    desc("Move".styled(styles.phase), dt.Arrow, "Battle".styled(styles.phase) ~ " then " ~ "Delve".styled(styles.phase), dt.Arrow, "Move".styled(styles.phase) ~ " or " ~ "Recover".styled(styles.phase)) ~
+                    desc(dt.Arrow, "Live Off".styled(styles.phase), dt.Arrow, "Retinue".styled(styles.phase)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Relics".hl.larger) ~
+                    more("Relic".hl.larger, "is a", "token".hh, Comma, "one of the three types", Comma, Tablet.name.styled(f), Comma, Jewel.name.styled(f), "or", Idol.name.styled(f), Dot) ~
+                    more("There are", "four".hh, "Relics".styled(f), "of each type", "valued", 1.styled(styles.vp), Comma, 2.styled(styles.vp), Comma, 3.styled(styles.vp), "and", 3.styled(styles.vp), Dot) ~
+                    more("Recovering".styled(f), "each", "Relic".styled(f), "scores", "victory points".styled(styles.vp), "equal to its value.") ~
+                    more("Each three", "Relics".styled(f), "of different", "types".hh, "additionally give", 2.vp, Dot) ~
+                    more("Enemies score", 2.vp, "removing a", "Relic".styled(f), Comma, "and place it back into the forest", Dot) ~
+                    Relic.types./ { rt =>
+                        tokenLine(n => f.recovered(rt).$(n).imgid, f.recovered(rt).num, 4 - f.recovered(rt).num, _ => f.style + "-" + rt.name + "-empty")
+                    } ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Waystations".hl.larger) ~
+                    more("Waystation".hl.larger, "is a", "building".hh, Comma, "it allows", "recruiting", Badger.sof(f), "and", "recovering".hh, "Relics".styled(f), Dot) ~
+                    more("Also provide", "crafting".hh, Comma, "and one extra", "card".hh, "draw each", Dot) ~
+                    more("A", Badger.of(f), "can", "encamp".hh, "in a clearing with a free building slot to become a", "Waystation".styled(f), Dot) ~
+                    more("A", "Waystation".styled(f), "can", "decamp".hh, "to become a", Badger.of(f), "again", Dot) ~
+
+
+                    buildingLine(n => f.wst.%(w => f.all(w).any).apply(n).imgid(f), 6 - f.wst./(f.pooled).sum, f.wst./(f.pooled).sum - 3) ~
+                    f.wst./~(w => f.all(w)).some.map(l =>
+                        desc("Recruit", 2.hlb.larger, Badger.sof(f), "with", l./(_.cost).distinct./(dt.CardSuit).merge, Comma, "craft", l./(_.asset)./(dt.CraftSuit).merge)
+                    ) ~
+                    f.wst./~(w => f.all(w)).use { l =>
+                        val r = 1 + l.num
+                        less("Draw", r.hlb.larger, "card".s(r).hh) ~
+                        more("Draw", r.hlb.larger, "card".s(r).hh, "at the end of turn.")
+                    } ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    clearings.%(f.rules).use(l => desc("Ruling".f, l.none.?("no"), "clearing".s(l.num), l.any.?((l.num > 1).?(Colon).|(Empty)), l./(_.elem).commaAnd)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Badgers".hl.larger) ~
+                    more("Badgers".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh, Dot) ~
+                    more("When", "moving", "each", Badger.of(f), "can take one", "Relic".styled(f), "with him", Dot) ~
+                    more(Badger.of(f), "ignore the first", "hit".styled(styles.hit), "in battle if they have a ", "Relic".styled(f), "with them", Dot) ~
+                    more("At the end of turn, if more than", "three".hh, Badger.sof(f), "are in a clearing, one", Badger.of(f), "is removed", Dot) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLine(f.style + "-badger", f.all(f.warrior).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    ("Retinue".styled(f)).div.div(xstyles.choice)(xstyles.xx)(xstyles.chm)(xstyles.chp)(xstyles.thu)(xlo.fullwidth)(new CustomStyle(rules.width("60ex"))(new StylePrefix("test")){}).pointer.onClick.param(f, "retinue") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, "retinue") => onFactionStatus(f, false, Some("retinue"))
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : Expedition if chapter.has("retinue") =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Retinue".hl.larger) ~
+                    HGap ~
+                    desc("Up to", 10.hh, "cards total, each card provides an", "action".hh, Dot) ~
+                    desc("In the", Evening, "can either", "add".hh, "any number of", "cards".hh, "here", Comma) ~
+                    desc("or", "shift".hh, "one card", "from one action to another", Dot) ~
+                    Retinue.all.%(d => f.retinue(d).any || f.complete(d).any)./(d =>
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        desc(d) ~
+                        HGap ~
+                        d.@@ {
+                            case RetinueMove =>
+                                desc("Move".hh, "from a matching", "clearing".hh, Dot)
+                            case BattleThenDelve =>
+                                desc("Battle".hh, "in a matching", "clearing".hh, Dot) ~
+                                desc("If", Badger.sof(f), "rule".hh, "the clearing after battle", Comma) ~
+                                desc("or if there were no enemies", Comma) ~
+                                desc("then they can", "delve".hh, "to take a", "Relic".styled(f), "from an adjacent forest", Dot) ~
+                                desc("If the", "value".styled(styles.vp), "of the", "Relic".styled(f), "is more") ~
+                                desc("than the number of", "ruled".hh, "clearings around the forest", Comma) ~
+                                desc("the card is", "discarded".hh, "thereafter", Dot)
+                            case MoveOrRecover => desc(
+                                desc("Either", "Move".hh, "from a matching", "clearing".hh, Comma, "or") ~
+                                desc("start", "recovering".hh, "Relics".styled(f), "from a matching", "clearing".hh, Dot) ~
+                                desc("To", "recover".hh, "a", "Relic".styled(f), Comma, "a", "Waystation".styled(f), "of the matching", "type".hh, "is needed in the same clearing", Dot) ~
+                                desc("Can", "recover".hh, "multiple", "Relics".styled(f), "with one", "card".hh, "if the number of", "ruled".hh, "clearings of the matching", "suit".hh, "at least equals the value of all", "Relics".styled(f), "but the last", Dot) ~
+                                desc("If the value of the last", "Relic".styled(f), "exceeded that number", Comma, "the card is", "discarded".hh, "thereafter", Dot)
+                            )
+                        } ~
+                        HGap ~
+                        (f.complete(d).get ++ f.retinue(d).get)./{ d => OnClick(d, Div(d.img, xstyles.info, xstyles.xx, xstyles.chm, xstyles.chp, styles.inline, styles.margined)) }.merge ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap ~
+                        HGap
+                    ) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, "moods") => onFactionStatus(f, false, Some("moods"))
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : Caster if chapter.none =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+
+                    Image("xc-board")(styles.factionboard) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Frogs".hl.larger) ~
+                    more("Frogs".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh, Dot) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLine(f.style + "-frog", f.all(f.warrior).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    ("Spells".styled(f)).div.div(xstyles.choice)(xstyles.xx)(xstyles.chm)(xstyles.chp)(xstyles.thu)(xlo.fullwidth)(new CustomStyle(rules.width("60ex"))(new StylePrefix("test")){}).pointer.onClick.param(f, "spells") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, "spells") => onFactionStatus(f, false, Some("spells"))
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : Caster if chapter.has("spells") =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Spells".hl.larger) ~
+                    HGap ~
+                    f.spellbooks./(s => OnClick(s, Div(s.img, xstyles.info, xstyles.xx, xstyles.chm, xstyles.chp, styles.inline, styles.margined))) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+
+                ).div(xlo.flexvcenter)), {
+                    case x => onClick(x)
+                })
+
+            case f : Utopia  =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc(("Bribery".hl ~ " is partially implemented" ~ " as a moral compromise on the part of the developer.").styled(xstyles.warning)) ~
+                    Image(f @@ {
+                        case CU => "cu-board-v1"
+                        case CUv2 => "cu-board-v3"
+                    } : String)(styles.factionboard) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Foxies".hl.larger) ~
+                    more("Foxies".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh, Dot) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLine(f.style + "-foxy", f.all(f.warrior).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : Farmer =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+
+                    Image("fh-board-v2")(styles.factionboard) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Hamsters".hl.larger) ~
+                    more("Hamsters".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh, Dot) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLine(f.style + "-hamster", f.all(f.warrior).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : OldExpedition =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    Image("ok-board")(styles.factionboard) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Badgers".hl.larger) ~
+                    more("Badgers".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh, Dot) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLine(f.style + "-badger", f.all(f.warrior).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : InvasiveDDD if chapter.has("deck") =>
+                showOverlay(overlayScrollX((Frog.elem ~ " Cards").hl.div ~
+                    Deck.frogDDD./{ d => OnClick(d, Div(d.img, xstyles.info, xstyles.xx, xstyles.chm, xstyles.chp, styles.inline, styles.margined)) }.merge), onClick)
+
+            case f : InvasiveDDD =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.elem.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    Image("ld-board-d")(styles.factionboard) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Frogs".hl.larger) ~
+                    more("Frogs".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh, Dot) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLine(f.style + "-frog", f.all(f.warrior).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    ("Frog Deck".styled(f)).div.div(xstyles.choice)(xstyles.xx)(xstyles.chm)(xstyles.chp)(xstyles.thu)(xlo.fullwidth)(new CustomStyle(rules.width("60ex"))(new StylePrefix("test")){}).pointer.onClick.param(f, "deck") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, "deck") => onFactionStatus(f, false, Some("deck"))
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : InvasiveCCC if chapter.has("deck") =>
+                showOverlay(overlayScrollX((Frog.elem ~ " Cards").hl.div ~
+                    Deck.frogCCC./{ d => OnClick(d, Div(d.img, xstyles.info, xstyles.xx, xstyles.chm, xstyles.chp, styles.inline, styles.margined)) }.merge), onClick)
+
+            case f : InvasiveCCC =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.elem.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    Image("ld-board-c")(styles.factionboard) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Frogs".hl.larger) ~
+                    more("Frogs".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh, Dot) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLine(f.style + "-frog", f.all(f.warrior).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    ("Frog Deck".styled(f)).div.div(xstyles.choice)(xstyles.xx)(xstyles.chm)(xstyles.chp)(xstyles.thu)(xlo.fullwidth)(new CustomStyle(rules.width("60ex"))(new StylePrefix("test")){}).pointer.onClick.param(f, "deck") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, "deck") => onFactionStatus(f, false, Some("deck"))
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : InvasiveBBB =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.elem.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    Image("ld-board")(styles.factionboard) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Frogs".hl.larger) ~
+                    more("Frogs".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh, Dot) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLine(f.style + "-frog", f.all(f.warrior).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : InvasiveAAA =>
+                showOverlay(overlayScrollX((
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.elem.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    Image("td-board")(styles.factionboard) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Frogs".hl.larger) ~
+                    more("Frogs".hl.larger, "are", "warriors".hh, Comma, "they", "battle".hh, "and provide", "rule".hh, Dot) ~
+                    desc(f.all(f.warrior).num.hl.larger, "on the map,", f.pooled(f.warrior).hl.larger, "in reserve") ~
+                    HGap ~
+                    warriorLine(f.style + "-frog", f.all(f.warrior).num, f.pooled(f.warrior)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
 
             case f : LegalAAA =>
                 showOverlay(overlayScrollX((
@@ -1725,7 +2860,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                     HGap ~
                     HGap
                 ).div(xlo.flexvcenter)), {
-                    case (f : Hireling, more : Boolean) => onHirelingStatus(f, more)
+                    case (f : Faction, more : Boolean) => onFactionStatus(f, more, None)
                     case _ =>
                         overlayPane.invis()
                         overlayPane.clear()
@@ -1880,7 +3015,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
 
             case f : MoleArtisians.type =>
                 showOverlay(overlayScrollX((
-                    Image("info:rat-smugglers")(styles.illustration) ~
+                    Image("info:mole-artisians")(styles.illustration) ~
                     HGap ~
                     HGap ~
                     HGap ~
@@ -1892,8 +3027,19 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                     HGap ~
                     HGap ~
                     HGap ~
-                    desc(Daylight) ~
-                    desc("The", "controller".hh, "can discard a", "card".hh, "with an", "item".hh, "on it to", "move".hh, "or", "battle".hh) ~
+                    less("Crafted", "item cards".hh, "return to the hand at the end of turn") ~
+                    more("The", "controller".hh, "can", "reveal".hh, "an item card when", "crafting".hh, Comma, "instead of", "discarding".hh, "it.") ~
+                    more("At the end of", Evening, "all cards revealed this way go back to the hand.") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    more("Works", "multiple".hh, "times per turn.") ~
+                    more("The", "controller".hh, "can end their turn with six or more cards.") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
                     HGap ~
                     HGap ~
                     HGap ~
@@ -1936,6 +3082,16 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                     HGap ~
                     HGap ~
                     HGap ~
+                    more("Works", "multiple".hh, "times per turn") ~
+                    more("It is", "not".hh, "necessary to be able to", "craft".hh, "the card") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
                     info() ~
                     HGap ~
                     HGap ~
@@ -1954,7 +3110,66 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
 
             case f : StoicProtector.type =>
                 showOverlay(overlayScrollX((
-                    Image("info:stoic-protector")(styles.illustration) ~
+
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    f.name.f.larger.larger ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    less("Prevents", "battle".hh, "or", "removal".hh) ~
+                    more("Where", Deer.of(f), "is present, enemies cannot battle or remove", "controller's".hh, "faction pieces.") ~
+                    more("If enemies deal", "hits".styled(styles.hit), "defending in", "battle".hh, Comma, "those are negated.") ~
+                    more(Deer.of(f), "itself cannot be battled or removed too.") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Start".hl, "of", Birdsong) ~
+                    less("Move", Deer.of(f), "ignoring rule") ~
+                    more("Move", Deer.of(f), "to any adjanced clearing regardless of", "rule".hh, Dot) ~
+                    more(Snare.of(CC), "prevents movement", Dot) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    more("When hired for the first time,", Deer.of(f), "is placeed in any clearing with owner's faction pieces.") ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Deer".hl.larger) ~
+                    Image(f.style + "-deer", styles.wr3x) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    info() ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap
+                ).div(xlo.flexvcenter)), {
+                    case (f : Hireling, more : Boolean) => onHirelingStatus(f, more)
+                    case _ =>
+                        overlayPane.invis()
+                        overlayPane.clear()
+                })
+
+            case f : ForestPatrol.type =>
+                showOverlay(overlayScrollX((
+                    Image("info:forest-patrol")(styles.illustration) ~
                     HGap ~
                     HGap ~
                     HGap ~
@@ -1967,7 +3182,37 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                     HGap ~
                     HGap ~
                     desc(Daylight) ~
-                    desc("The", "controller".hh, "can discard a", "card".hh, "with an", "item".hh, "on it to", "move".hh, "or", "battle".hh) ~
+                    desc(StrayCat.sof(f), "can", "move".hh, "and then can", "battle".hh, "anywhere") ~
+                    desc("~".hl, "or", "~".hl) ~
+                    desc("Place all", StrayCat.sof(f), "from the", "hospital".hh, "to any clearing with", StrayCat.of(f)) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    desc("Patrols".hl.larger) ~
+                    desc(clearings./~(f.at).num.hl.larger, "on the map,", f.hospital.num.hl.larger, "in the", "hospital".hh) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    warriorLineNoGroup(f.style + "-stray-cat", clearings./~(f.at).num, f.hospital.num) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
+                    more("Whenever any number of", StrayCat.sof(f), "are removed,", "one".hh, "of them goes to the", "hospital".hh) ~
+                    HGap ~
+                    HGap ~
+                    HGap ~
                     HGap ~
                     HGap ~
                     HGap ~
@@ -2007,7 +3252,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                     more("If", f, "is not present on the map, place all", f.warrior.sof(f)) ~
                     more("in a clearing on the map edge and", "battle".hh) ~
                     less("Respawn all", f.warrior.sof(f), "if none and ", "battle".hh) ~
-                    desc("~".hl, "or", "~".hl) ~
+                    desc("~".hl, "or else", "~".hl) ~
                     more("If", f, "rules".hh, "its clearing,", "move".hh, "all", Vulture.sof(f), "and then", "battle".hh) ~
                     less("If", "rule".hh, "then", "move".hh, "all", "and", "battle".hh) ~
                     desc("~".hl, "or else", "~".hl) ~
@@ -2297,7 +3542,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
             showOverlay(overlayScrollX("Discard Pile".hl.div ~
                 game.pile./{ d => OnClick(d, Div(d.img, xstyles.info, xstyles.xx, xstyles.chm, xstyles.chp, styles.inline, styles.margined)) }.merge), onClick)
 
-        case ("view-frog-discard", f : InvasiveDDD) =>
+        case ("view-frog-discard", f : InvasiveCCC) =>
             showOverlay(overlayScrollX((Frog.elem ~ " Discard Pile").hl.div ~
                 f.pile./{ d => OnClick(d, Div(d.img, xstyles.info, xstyles.xx, xstyles.chm, xstyles.chp, styles.inline, styles.margined)) }.merge), onClick)
 
@@ -2327,7 +3572,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
 
         case ("view-frog-deck", f : InvasiveCCC) =>
             showOverlay(overlayScrollX((Frog.elem ~ " Draw Deck").hl.div ~
-                1.to(f.deck.num)./{ n => Div(Image("card-frog-back-art", styles.card), xstyles.info, xstyles.xx, xstyleschm, xstyles.chp, styles.inline, styles.margined) }.merge), onClick)
+                1.to(f.deck.num)./{ n => Div(Image("card-frog-back-art", styles.card), xstyles.info, xstyles.xx, xstyles.chm, xstyles.chp, styles.inline, styles.margined) }.merge), onClick)
 
         case ("view-frog-deck", f : InvasiveBBB) =>
             showOverlay(overlayScrollX((Frog.elem ~ " Draw Deck").hl.div ~
@@ -2394,31 +3639,96 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
             craftable.foreach { c =>
                 if (available.has(c)) {
                     available :-= c
-                    uncrafted :+= Image("item-" + c.name, styles.ii)
+                    uncrafted :+= Image("item-" + c.name, styles.iii)
                 }
                 else
-                    uncrafted :+= Image("item-" + c.name + "-empty", styles.ii)
+                    uncrafted :+= Image("item-" + c.name + "-empty", styles.iii)
             }
 
-            val items = (uncrafted.take(6).merge.div(xlo.flexhcenter)(xlo.flexnowrap) ~ uncrafted.drop(6).merge.div(xlo.flexhcenter)(xlo.flexnowrap)).div(xlo.pointer).onClick.param("view-items")
+            val items = (uncrafted.take(6) ~ Break ~ uncrafted.drop(6)).div(styles.margined)
+
+            val ruins = game.ruins.values./~(_.items).$.sortBy(i => Item.order.indexOf(i))
+
+            showOverlay(overlayScrollX("Craftable Items".hl.div ~ items ~ ruins.some./(Break ~ "In Ruins".hl.div ~ _./(i => Image("item-" + i.name, styles.iii)).merge).|(Empty)), onClick)
+
+        case (f : Faction, h : Hireling) =>
+            onHirelingStatus(h, false)
+
+        case (f : Faction, e : Effect) =>
+            val s = f.stuck.collect {
+                case d @ CraftEffectCard(_, _, _, ee) if ee == e => d
+            }
+
+            if (s.any)
+                onClick(s(0))
+            else
+                println("no info for effect " + e)
+
+        case FaithfulRetainer =>
+            showOverlay(overlayFitX(Image("artwork:" + "faithful-retainer", xstyles.artwork)), onClick)
+
+
+
+
+        case d : DeckCard =>
+            if (resources.images.hasSource("artwork:" + d.id))
+                showOverlay(overlayFitX(Image("artwork:" + d.id, xstyles.artwork)), onClick)
+            else
+                showOverlay(overlayFitX(Image(d.id, xstyles.artwork)), onClick)
+
+        case s : Spell =>
+            showOverlay(overlayFitX(Image("xc-spell-" + s.name, xstyles.artwork)), onClick)
+
+        case q : Quest =>
+            showOverlay(overlayFitX(Image("artwork:" + q.id, xstyles.artwork)), onClick)
+
+        case l : Leader =>
+            showOverlay(overlayFitX(Image("ed-" + l.name, xstyles.artwork)), onClick)
+
+        case c : Character =>
+            showOverlay(overlayFitX(Image("vb-char-" + c.name, xstyles.artwork)), onClick)
+
+        case Nil =>
+            overlayPane.invis()
+            overlayPane.clear()
+
+        case x =>
+            println("unknown onClick: " + x)
+    }
+
+    def gameStatus(container : Container) {
+        val hor = container.node.clientWidth > container.node.clientHeight * 3 + 1
+
+        val quests = game.quests.any.?((game.quests.take(3)./(q => Image("quest-" + q.suit.name, styles.token) ~ " " ~ q.elem).join(Break).div(hor.not.?(styles.centerquest))).pointer.onClick.param("view-quests"))
+
+        val discard =
+            (
+                (game.deck.num.formatted("%2d").hl.styled(styles.doubleFigures) ~ Image("deck", styles.pile)).pointer.onClick.param("view-deck") ~
+                Gap ~
+                (game.pile.num.formatted("%2d").hl.styled(styles.doubleFigures) ~ Image("pile-" + game.pile.any.?(game.pile.last.suit).|("empty"), styles.pile)).pointer.onClick.param("view-discard")
+            ).div(xlo.flexhcenter)(hor.?(styles.verdeck))
+
+        val dominances = game.dominances./(d => Image(d.id, styles.dominance)).merge.pointer.onClick.param("view-dominances")
+
+        val craftable = $(Bag, Boots, Crossbow, Sword, Teapot, Coins, Bag, Boots, Hammer, Sword, Teapot, Coins)
+        var available = game.uncrafted
+
+        var uncrafted : $[Elem] = $
+
+        craftable.foreach { c =>
+            if (available.has(c)) {
+                available :-= c
+                uncrafted :+= Image("item-" + c.name, styles.ii)
+            }
+            else
+                uncrafted :+= Image("item-" + c.name + "-empty", styles.ii)
+        }
+
+        val items = (uncrafted.take(6).merge.div(xlo.flexhcenter)(xlo.flexnowrap) ~ uncrafted.drop(6).merge.div(xlo.flexhcenter)(xlo.flexnowrap)).div(xlo.pointer).onClick.param("view-items")
 
         val s = $(|(items), quests, |(discard), |(dominances)).flatten.but(Empty)./(_.div(styles.skipline)).merge
 
         container.replace((s.div(xlo.flexhcenter)(styles.gstatus)), resources, onClick)
-    }
-
-    def removeLoyalistsToSupply(f : Faction, c : Clearing, num : Int) {
-        val action = RemoveLoyalistsToSupplyMainAction(f)
-
-        val regionsWithLoyalists = board.clearings.filter(_.tokens.of(LoyalistToken).any)
-
-        Ask(f)
-          .each(regionsWithLoyalists)(c =>
-            XXSelectObjectsAction(f, c.tokens.of(LoyalistToken))
-              .withGroup("Remove Loyalists from " ~ c.elem)
-              .withThen(l => RemoveLoyalistsToSupplyAction(f, c, l.num))
-          )
-          .cancel
     }
 
     def updateStatus() {
@@ -2451,7 +3761,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
 
     val zoom = 0.72
 
-    val layouts = $(Layout("base") $(
+    val layouts = $(Layout("base", $(
                 BasicPane("status", 12.2+0.8+0.8-0.8-0.8, 16.4, Priorities(top = 2, right = 2, maxXscale = 1.8, maxYscale = 1.4)),
                 BasicPane("status-game-a", 10.5+0.5, 10, Priorities(grow = -1, maxXscale = 1.8, maxYscale = 2.4)),
                 BasicPane("status-game-b", 35, 4.4, Priorities(top = 1, grow = -1, maxXscale = 3.0, maxYscale = 3.2)),
@@ -2463,7 +3773,8 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
                 BasicPane("action-b", 41, 38, Priorities(bottom = 2, right = 2, grow = 1, maxXscale = 1.2))
             )
             ./(p => p.copy(kX = p.kX * zoom, kY = p.kY * zoom))
-        )./~(l =>
+        )
+    )./~(l =>
         l.copy(name = l.name + "-fulldim", panes = l.panes./{
             case p : BasicPane if p.name == "map-small" => FullDimPane(p.name, p.kX, p.kY, p.pr)
             case p => p
@@ -2534,11 +3845,37 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
         $
     )
 
+    val layouter = Layouter(layouts.%(l => hrf.HRF.param("layout").none || hrf.HRF.param("layout").get == l.name), _./~{
+        case f if f.name == "map-small" => $(f, f.copy(name = "overlay"))
+        case f if f.name == "action" => $(f, f.copy(name = "undo"), f.copy(name = "settings"))
+        case f if f.name == "status-horizontal" => 1.to(arity)./(n => f.copy(name = "status-" + n, x = f.x + ((n - 1) * f.width  / arity.toDouble).round.toInt, width  = (n * f.width  / arity.toDouble).round.toInt - ((n - 1) * f.width  / arity.toDouble).round.toInt))
+        case f if f.name == "status-vertical"   => 1.to(arity)./(n => f.copy(name = "status-" + n, y = f.y + ((n - 1) * f.height / arity.toDouble).round.toInt, height = (n * f.height / arity.toDouble).round.toInt - ((n - 1) * f.height / arity.toDouble).round.toInt))
+        case f if f.name == "status-hordouble" =>
+            val c = ((arity + 1) / 2)
+            1.to(c * 2)./(n => f.copy(name = "status-" + (n > arity).?("game").|(n.toString),
+                x = f.x + (((n - 1) % c) * f.width / c.toDouble).round.toInt,
+                width = (n * f.width / c.toDouble).round.toInt - ((n - 1) * f.width / c.toDouble).round.toInt,
+                y = f.y + (n - 1) / c * (f.height / 2),
+                height = (n > c).?(f.height - f.height / 2).|(f.height / 2))
+            )
+        case f if f.name == "status-verdouble" =>
+            val c = ((arity + 1) / 2)
+            1.to(c * 2)./(n => f.copy(name = "status-" + (n > arity).?("game").|((((n - 1) % c) * 2 + (n - 1) / c + 1).toString),
+                y = f.y + (((n - 1) % c) * f.height / c.toDouble).round.toInt,
+                height = (n * f.height / c.toDouble).round.toInt - ((n - 1) * f.height / c.toDouble).round.toInt,
+                x = f.x + (n - 1) / c * (f.width / 2),
+                width = (n > c).?(f.width - f.width / 2).|(f.width / 2))
+            )
+        case f => $(f)
+    })
+
     val settingsKey = Meta.settingsKey
 
     val layoutKey = "v" + 2 + "." + "arity-" + arity
 
     override def info(self : |[Player], aa : $[UserAction]) = {
+        lastSelf = self
+
         val ii = currentGame.info($, self, aa)
         ii.any.??($(ZOption(Empty, Break)) ++ convertActions(self.of[Faction], ii)) ++
             (currentGame.isOver && hrf.HRF.flag("replay").not).$(
@@ -2695,7 +4032,7 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
              f.as[PlayerN].foreach(f => callbacks.switches.disableSwitch(MetaAdset.writeFaction(f) + " "  + MetaAdset.writeOption(s)))
     }
 
-    override def shadowAsk(faction : |[Player], actions : $[UserAction]) : |[UserAction] =
+    override def shadowAsk(faction : Player, actions : $[UserAction]) : |[UserAction] =
         fix(faction).as[Faction]./~(shadowCheck(_, actions)) ||
         fix(faction).as[PlayerN]./~(shadowCheck(_, actions))
 
@@ -2775,513 +4112,33 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
             }
 
         if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
+            actions./(_.unwrap).of[FieldHospitalsIgnoreAction].%(a => a.c.suits.forall(s => isEnabled(f, SkipFieldHospitalsSuit(s)))).foreach { a =>
+                if (test) alog("auto skip field hospitals".hl, 0, _ => {})
 
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
+                return Some(a.wrap)
             }
 
         if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
+            actions./(_.unwrap).of[FieldHospitalsIgnoreAction].%(a => isEnabled(f, SkipFieldHospitalsCount(1)) && f.as[Feline].?(_.limbo(a.c).$.%(_.piece.is[Warrior]).num) <= 1).foreach { a =>
+                if (test) alog("auto skip field hospitals".hl, 0, _ => {})
 
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
+                return Some(a.wrap)
             }
 
         if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
+            actions./(_.unwrap).of[PartisansAction].%(a => isEnabled(f, UsePartisansSuit(a.s))).foreach { a =>
+                if (test) alog("auto use partisans".hl, 0, _ => {})
 
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
+                return Some(a)
             }
 
         if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
-            }
-
-        if (r < 0.08)
-            if (actions.has(HiddenAssignHits) && isEnabled(f, UseAutoAssignHits)) {
-                if (test) alog("auto assign hits?".hl, 0, _ => {})
-
-                val values = expand.of[XXObjectsSelectedAction[Figure]]./(_.values)
-
-                val variants = values./(_.indexed./{
-                    case Figure(faction, piece : Base, _) -> n => Figure(faction, piece, n)
-                    case Figure(faction, piece, _) -> _ => Figure(faction, piece, 0)
-                }.toSet).distinct
-
-                if (variants.num == 1)
-                    return Some(expand(0))
+            actions./(_.unwrap).of[PartisansAction].%(a => isEnabled(f, SkipPartisansSuit(a.s))).foreach { a =>
+                if (test) alog("auto skip partisans".hl, 0, _ => {})
+
+                expand.but(a).single.foreach { r =>
+                    return Some(r)
+                }
             }
 
         None
@@ -3380,7 +4237,6 @@ class UI(val uir : ElementAttachmentPoint, arity : Int, options : $[Meta.O], val
             case a : Selectable if a.selected => $(styles.selected)
             case _ => $()
         } ++
-        $(xstyles.thu, xstyles.thumargin, xlo.fullwidth) ++
         view @@ {
             case Some(_ : Character)  => $(styles.inline, styles.charback) ++ a.selected.?(styles.selchar)
             case Some(_ : PlayChoice) => $(styles.inline, styles.charback) ++ a.selected.?(styles.selchar)
