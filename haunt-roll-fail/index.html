@@ -1,6 +1,7 @@
 <!doctype html>
-<html>
+<html lang="en">
     <head>
+        <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
         <!-- { | BASE HREF | { -->
@@ -460,7 +461,7 @@
             };
         </script>
 
-        <textarea id="clipboard" style="position: absolute; width: 1px; height: 1px; border: 0px; margin: 0px; padding: 0px; opacity: 0.01; z-index: -1000;">
+        <textarea id="clipboard" aria-label="clipboard" style="position: absolute; width: 1px; height: 1px; border: 0px; margin: 0px; padding: 0px; opacity: 0.01; z-index: -1000;">
         </textarea>
 
         <div id="backgroun-clouds" class="black-clouds" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; width: 100vw; height: 100vh; width: 100dvw; height: 100dvh; opacity: 0.60; ">
@@ -484,6 +485,10 @@
 
                     backgroundX += backgroundDX;
                     backgroundY += backgroundDY;
+                    // Keep the drift bounded to [0,100]% by bouncing off the edges. Without this the
+                    // offset grows without limit (e.g. -1980%) and the tiled background flickers.
+                    if (backgroundX <= 0 || backgroundX >= 100) { backgroundDX = -backgroundDX; backgroundX = Math.max(0, Math.min(100, backgroundX)); }
+                    if (backgroundY <= 0 || backgroundY >= 100) { backgroundDY = -backgroundDY; backgroundY = Math.max(0, Math.min(100, backgroundY)); }
                     document.getElementById("backgroun-clouds").style.backgroundPositionX = backgroundX + "%";
                     document.getElementById("backgroun-clouds").style.backgroundPositionY = backgroundY + "%";
                     drawFrame();
@@ -494,7 +499,7 @@
 
         <div id="force-allow-scroll" style="position: absolute; width: 0.100svw; height: 0.100svh; left: 0; top: 0; opacity: 0.01; z-index: -1000;"></div>
 
-        <a id="rooteros-home" href="/games" title="Your games dashboard">⌂ My games</a>
+        <a id="rooteros-home" href="/games" title="Your games dashboard">My games</a>
 
         <div id="font-size-adjust" style="font-size: 100%;">
             <div id="game-attachment-point">

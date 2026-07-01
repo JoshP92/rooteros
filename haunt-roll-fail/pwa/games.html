@@ -36,6 +36,13 @@
         }
         button.secondary { background: #222; color: #bbb; }
         button:disabled { opacity: 0.5; cursor: default; }
+        .addgame { display: flex; gap: 8px; margin-bottom: 18px; }
+        .addgame input {
+            flex: 1; min-width: 0; background: #111; border: 1px solid #262626; border-radius: 10px;
+            color: #ddd; font: inherit; font-size: 14px; padding: 10px 12px; outline: none;
+        }
+        .addgame input:focus { border-color: #3a5a3a; }
+        .addgame input::placeholder { color: #666; }
         .games { display: flex; flex-direction: column; gap: 12px; }
         .card {
             display: block; text-decoration: none; color: inherit;
@@ -53,7 +60,6 @@
         .meta { font-size: 12px; color: #6f6f6f; text-transform: capitalize; }
         .when { font-size: 12px; color: #5c5c5c; }
         .empty { text-align: center; color: #6a6a6a; padding: 44px 20px; line-height: 1.6; font-size: 15px; }
-        .empty .big { font-size: 40px; margin-bottom: 8px; opacity: 0.7; }
         .foot { margin-top: 28px; text-align: center; font-size: 11px; color: #444; }
         .msg { font-size: 13px; margin-top: 10px; min-height: 18px; }
         .msg.err { color: #c98; }
@@ -72,13 +78,18 @@
         <div class="notif" id="notifBox">
             <div class="txt" id="notifTxt">Get a notification when it's your turn.</div>
             <button id="notifBtn">Enable notifications</button>
+            <button id="testBtn" class="secondary" style="display:none">Send test</button>
+        </div>
+
+        <div class="addgame">
+            <input type="text" id="addInput" placeholder="Paste a game link to add it" aria-label="Paste a game link" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button id="addBtn" class="secondary">Add</button>
         </div>
 
         <div class="games" id="games"></div>
         <div class="empty" id="empty" style="display:none">
-            <div class="big">🎲</div>
             No games yet.<br />
-            Open a game link a friend shared — it'll show up here, on every device where you install this app.
+            Paste a game link above (or open one a friend shared in this browser) to add it here.
         </div>
 
         <div class="msg" id="msg"></div>
@@ -197,7 +208,8 @@
                 if (res.ok) {
                     setMsg("Notifications enabled on this device.", "ok");
                     document.getElementById("notifTxt").textContent = "Notifications are on for this device.";
-                    btn.textContent = "Enabled ✓";
+                    btn.textContent = "Notifications on";
+                    document.getElementById("testBtn").style.display = "";
                 } else {
                     setMsg("Couldn't save subscription (" + res.status + ").", "err");
                     btn.disabled = false;
@@ -206,6 +218,35 @@
                 setMsg("Notification setup failed: " + e.message, "err");
                 btn.disabled = false;
             }
+        }
+
+        function parsePlayLink(input) {
+            input = (input || "").trim();
+            const m = input.match(/\/play\/([^\/\s?#]+)\/([^\/\s?#]+)/);
+            if (m) return { meta: m[1], secret: m[2] };
+            return null;
+        }
+
+        async function addGame() {
+            const input = document.getElementById("addInput");
+            const parsed = parsePlayLink(input.value);
+            if (!parsed) { setMsg("That doesn't look like a game link — paste the full /play/… link.", "err"); return; }
+            try {
+                const acct = await ensureAccount();
+                const res = await fetch(SERVER + "/add-game/" + acct.id + "/" + acct.secret, { method: "POST", body: parsed.meta + "\n" + parsed.secret });
+                if (res.ok) { input.value = ""; setMsg("Game added.", "ok"); await loadGames(); }
+                else setMsg("Couldn't add that game (" + res.status + ") — double-check the link.", "err");
+            } catch (e) { setMsg("Error adding game: " + e.message, "err"); }
+        }
+
+        async function sendTestPush() {
+            try {
+                const acct = getAccount();
+                if (!acct) return;
+                const res = await fetch(SERVER + "/test-push/" + acct.id + "/" + acct.secret, { method: "POST", body: "" });
+                if (res.ok) setMsg("Test sent — you should get a notification shortly.", "ok");
+                else setMsg("Test push failed (" + res.status + ").", "err");
+            } catch (e) { setMsg("Test push error: " + e.message, "err"); }
         }
 
         async function main() {
@@ -222,11 +263,15 @@
                     if (sub) {
                         document.getElementById("notifTxt").textContent = "Notifications are on for this device.";
                         const b = document.getElementById("notifBtn");
-                        b.textContent = "Enabled ✓"; b.disabled = true;
+                        b.textContent = "Notifications on"; b.disabled = true;
+                        document.getElementById("testBtn").style.display = "";
                     }
                 }
             } catch (e) {}
             document.getElementById("notifBtn").addEventListener("click", enableNotifications);
+            document.getElementById("testBtn").addEventListener("click", sendTestPush);
+            document.getElementById("addBtn").addEventListener("click", addGame);
+            document.getElementById("addInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addGame(); });
             await loadGames();
             setInterval(loadGames, 20000);
             document.addEventListener("visibilitychange", () => { if (!document.hidden) loadGames(); });

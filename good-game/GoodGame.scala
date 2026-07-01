@@ -3,6 +3,8 @@ package hrf.gg
 import slick.jdbc.HsqldbProfile.api._
 import slick.jdbc.HsqldbProfile.api.DBIO.seq
 
+import scala.concurrent.Future
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
@@ -156,6 +158,92 @@ object GoodGame {
     val journalTurns = TableQuery[JournalTurns]
 
 
+    // Web Push (VAPID) sender. A static singleton, initialized once from the VAPID_* env vars.
+    // If the keys are absent/blank it stays disabled and sendPush no-ops, so the server runs fine
+    // without push configured. See deploy/entrypoint.sh (sources /data/vapid.env).
+    object WebPush {
+        import java.math.BigInteger
+        import java.net.http.{HttpClient, HttpRequest, HttpResponse}
+        import java.security.KeyFactory
+        import java.security.interfaces.ECPrivateKey
+        import java.security.spec.{ECParameterSpec, ECPrivateKeySpec, ECGenParameterSpec}
+        import java.util.Base64
+        import java.util.concurrent.TimeUnit
+        import com.zerodeplibs.webpush.{PushSubscription, VAPIDKeyPair, VAPIDKeyPairs}
+        import com.zerodeplibs.webpush.key.{PrivateKeySources, PublicKeySources}
+        import com.zerodeplibs.webpush.httpclient.StandardHttpClientRequestPreparer
+
+        private val b64url = Base64.getUrlDecoder
+
+        // Read once at class-load. Absent/blank env => enabled == false => sendPush no-ops.
+        private val subject = sys.env.get("VAPID_SUBJECT").map(_.trim).filter(_.nonEmpty)
+        private val pubB64  = sys.env.get("VAPID_PUBLIC").map(_.trim).filter(_.nonEmpty)
+        private val privB64 = sys.env.get("VAPID_PRIVATE").map(_.trim).filter(_.nonEmpty)
+
+        private val httpClient = HttpClient.newHttpClient()
+
+        // Build the VAPIDKeyPair once. Public key is the 65-byte uncompressed point (direct factory).
+        // Private key is stored as the raw 32-byte scalar, so rebuild an ECPrivateKey on P-256 —
+        // there is no raw-scalar factory; ofPKCS8Bytes would reject the bare scalar.
+        private val keyPair : Option[VAPIDKeyPair] =
+            try {
+                for {
+                    pub  <- pubB64
+                    priv <- privB64
+                    _    <- subject
+                } yield {
+                    val publicBytes = b64url.decode(pub)                 // 65 bytes, 0x04-prefixed
+                    val d = new BigInteger(1, b64url.decode(priv))       // 32-byte unsigned scalar
+                    val ap = java.security.AlgorithmParameters.getInstance("EC")
+                    ap.init(new ECGenParameterSpec("secp256r1"))
+                    val ecSpec = ap.getParameterSpec(classOf[ECParameterSpec])
+                    val ecPriv = KeyFactory.getInstance("EC")
+                        .generatePrivate(new ECPrivateKeySpec(d, ecSpec)).asInstanceOf[ECPrivateKey]
+                    VAPIDKeyPairs.of(
+                        PrivateKeySources.ofECPrivateKey(ecPriv),
+                        PublicKeySources.ofUncompressedBytes(publicBytes))
+                }
+            }
+            catch { case e : Throwable => println("[rooteros] VAPID key init FAILED: " + e.getMessage) ; None }
+
+        val enabled : Boolean = keyPair.isDefined
+
+        println(if (enabled) "[rooteros] Web Push enabled (VAPID keys present)."
+                else          "[rooteros] Web Push DISABLED (VAPID keys absent).")
+
+        // Force object initialization (and the log line above) from main at boot.
+        def init() : Unit = ()
+
+        // Send one push. Returns the push-service HTTP status (201 = accepted); 404/410 => caller
+        // deletes the sub. Returns 0 when push is disabled or the send throws (nothing to delete).
+        def sendPush(endpoint : String, p256dh : String, auth : String, jsonPayload : String) : Int =
+            keyPair match {
+                case None => 0
+                case Some(kp) =>
+                    try {
+                        val sub = new PushSubscription()
+                        sub.setEndpoint(endpoint)
+                        val keys = new PushSubscription.Keys()
+                        keys.setP256dh(p256dh)   // browser base64url strings, passed straight through
+                        keys.setAuth(auth)
+                        sub.setKeys(keys)
+                        val request : HttpRequest = StandardHttpClientRequestPreparer.getBuilder()
+                            .pushSubscription(sub)
+                            .vapidJWTExpiresAfter(15, TimeUnit.MINUTES)
+                            .vapidJWTSubject(subject.get)
+                            .pushMessage(jsonPayload)
+                            .ttl(12, TimeUnit.HOURS)
+                            .urgencyLow()
+                            .build(kp)
+                            .toRequest()
+                        val resp = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+                        resp.statusCode()
+                    }
+                    catch { case e : Throwable => println("[rooteros] push send failed: " + e.getMessage) ; 0 }
+            }
+    }
+
+
     def main(args : Array[String]) {
         if (args.size != 6) {
             println("gg <create|run> <directory> <database> <url> <cdn> <port>")
@@ -224,6 +312,20 @@ object GoodGame {
         ensure("PushSubs")     { execute(pushSubs.schema.create) }
         ensure("JournalTurns") { execute(journalTurns.schema.create) }
 
+        // Persistence hardening. HSQLDB keeps changes in a write-ahead .log and only merges them into
+        // the durable .script on CHECKPOINT/SHUTDOWN. An abrupt container stop (docker restart's
+        // SIGKILL) can leave recent schema/rows only in the .log, which isn't always replayed cleanly
+        // — that's how the account tables got lost once. So: (1) checkpoint right after the migration
+        // to push the new-table DDL into .script immediately, and (2) shut the DB down cleanly on
+        // SIGTERM so everything is flushed before the JVM exits.
+        try { execute(sqlu"CHECKPOINT") } catch { case e : Throwable => println("[rooteros] checkpoint warning: " + e.getMessage) }
+        Runtime.getRuntime.addShutdownHook(new Thread(() => {
+            try { execute(sqlu"SHUTDOWN") ; println("[rooteros] database checkpointed and shut down cleanly.") }
+            catch { case e : Throwable => println("[rooteros] shutdown checkpoint skipped: " + e.getMessage) }
+        }))
+
+        WebPush.init()   // logs whether Web Push is enabled (VAPID_* env present) or disabled
+
         implicit val system = ActorSystem()
         implicit val executionContext = system.dispatcher
 
@@ -275,18 +377,49 @@ object GoodGame {
         def checkAccount(accountId : String, accountSecret : String) : Unit =
             execute(accounts.filter(_.id === accountId).filter(_.secret === accountSecret).result.head)
 
+        // Push "it's your turn" to every account behind a newly-asked userId, via GameSeats -> PushSubs.
+        // Fire-and-forget on the Akka dispatcher (the route returns immediately); dead subscriptions
+        // (404/410) are pruned. Payload keys match pwa/sw.js: {title, body, url, tag}.
+        def notifyTurn(journalId : String, userIds : Set[String]) : Unit = Future {
+            val title = execute(journals.filter(_.id === journalId).map(_.name).result).headOption.getOrElse("Your game")
+            val payload =
+                "{" +
+                    "\"title\":" + js("Your turn") + "," +
+                    "\"body\":"  + js(title)       + "," +
+                    "\"url\":"   + js("/games")    + "," +
+                    "\"tag\":"   + js(journalId)   +
+                "}"
+            val accountIds = execute(
+                gameSeats.filter(_.journalId === journalId).filter(_.userId.inSet(userIds)).map(_.accountId).result
+            ).toSet
+            accountIds.foreach { accountId =>
+                execute(pushSubs.filter(_.accountId === accountId).result).foreach { sub =>
+                    val code = WebPush.sendPush(sub.endpoint, sub.p256dh, sub.auth, payload)
+                    if (code == 404 || code == 410)
+                        execute(pushSubs.filter(_.endpoint === sub.endpoint).delete)
+                }
+            }
+        }.recover { case e : Throwable => println("[rooteros] notifyTurn failed: " + e.getMessage) }
+
         val manifestCT = ContentType(MediaType.applicationWithFixedCharset("manifest+json", HttpCharsets.`UTF-8`, "webmanifest"))
 
         val route = cors() {
             (pathPrefix("hrf")) {
-                optionalHeaderValueByName("Referer") { referer =>
-                    // Serve when there is no Referer (browsers omit it for some
-                    // early fetch()/script/CSS requests) or when it comes from the
-                    // configured host or localhost; still block cross-site hotlinking.
-                    if (referer.forall(r => r.startsWith(url) || r.startsWith("http://localhost") || r.startsWith("http://127.0.0.1")))
-                        getFromDirectory(directory) ~ imageFallback
-                    else
-                        complete(StatusCodes.NotFound, "")
+                // Cache the (rarely-changing) art/font/js assets for a day so the browser stops
+                // re-fetching every one on each load, and stop content-type sniffing (nosniff).
+                respondWithHeaders(
+                    `Cache-Control`(CacheDirectives.public, CacheDirectives.`max-age`(86400)),
+                    RawHeader("X-Content-Type-Options", "nosniff")
+                ) {
+                    optionalHeaderValueByName("Referer") { referer =>
+                        // Serve when there is no Referer (browsers omit it for some
+                        // early fetch()/script/CSS requests) or when it comes from the
+                        // configured host or localhost; still block cross-site hotlinking.
+                        if (referer.forall(r => r.startsWith(url) || r.startsWith("http://localhost") || r.startsWith("http://127.0.0.1")))
+                            getFromDirectory(directory) ~ imageFallback
+                        else
+                            complete(StatusCodes.NotFound, "")
+                    }
                 }
             } ~
             (get & path("")) {
@@ -473,6 +606,53 @@ object GoodGame {
                     }
                 }
             } ~
+            // Add a game to this account straight from a shared play link (iOS-friendly: links open
+            // in Safari, not the installed app, so the user pastes the link into the dashboard). The
+            // play secret alone resolves the seat, so no per-seat credentials are needed here.
+            // Body: meta\nplaySecret
+            (post & path("add-game" / Segment / Segment)) { case (accountId, accountSecret) =>
+                decodeRequest {
+                    entity(as[String]) { body =>
+                        val ls = body.split('\n').toList
+                        val meta = urlsafe(ls.lift(0).getOrElse("").trim)
+                        val playSecret = urlsafe(ls.lift(1).getOrElse("").trim)
+                        try {
+                            checkAccount(accountId, accountSecret)
+                            val play = execute(plays.filter(_.secret === playSecret).result.head)
+                            execute(gameSeats.filter(_.accountId === accountId).filter(_.journalId === play.journalId).delete)
+                            execute(gameSeats += GameSeat(accountId, play.userId, play.journalId, meta, playSecret, System.currentTimeMillis()))
+                            complete(StatusCodes.Accepted)
+                        }
+                        catch { case e : Throwable => complete(StatusCodes.NotFound, "") }
+                    }
+                }
+            } ~
+            // Send a test push to all of this account's subscriptions, so the user can verify the
+            // whole pipeline (subscribe -> server send -> sw.js notification) works on their device.
+            (post & path("test-push" / Segment / Segment)) { case (accountId, accountSecret) =>
+                try {
+                    checkAccount(accountId, accountSecret)
+                    if (!WebPush.enabled)
+                        complete(StatusCodes.ServiceUnavailable, "push disabled on server")
+                    else {
+                        val payload =
+                            "{" +
+                                "\"title\":" + js("RooterOS") + "," +
+                                "\"body\":"  + js("Test notification — push is working.") + "," +
+                                "\"url\":"   + js("/games") + "," +
+                                "\"tag\":"   + js("rooteros-test") +
+                            "}"
+                        Future {
+                            execute(pushSubs.filter(_.accountId === accountId).result).foreach { sub =>
+                                val code = WebPush.sendPush(sub.endpoint, sub.p256dh, sub.auth, payload)
+                                if (code == 404 || code == 410) execute(pushSubs.filter(_.endpoint === sub.endpoint).delete)
+                            }
+                        }.recover { case e : Throwable => println("[rooteros] test-push failed: " + e.getMessage) }
+                        complete(StatusCodes.Accepted)
+                    }
+                }
+                catch { case e : Throwable => complete(StatusCodes.Forbidden, "") }
+            } ~
             // Dashboard data: every game seat tied to this account, with the game title
             // (Journal.name) and whose-turn info. Returns a small JSON array.
             (get & path("my-games" / Segment / Segment)) { case (accountId, accountSecret) =>
@@ -531,11 +711,20 @@ object GoodGame {
                         try {
                             execute(users.filter(_.id === userId).filter(_.secret === userSecret).result.head)
                             execute(accessRights.filter(_.journalId === journalId).filter(_.userId === userId).filter(_.right === "append").result.head)
+
+                            val prev = execute(journalTurns.filter(_.journalId === journalId).result).headOption.map(_.waiting).getOrElse("")
+                            val prevSet = prev.split(' ').filter(_.nonEmpty).toSet
+                            val nowSet = waiting.split(' ').filter(_.nonEmpty).toSet
+                            val newlyAsked = nowSet.diff(prevSet)
+
                             execute(journalTurns.filter(_.journalId === journalId).delete)
                             execute(journalTurns += JournalTurn(journalId, waiting, System.currentTimeMillis()))
-                            // TODO (push checkpoint): diff against the previous `waiting` set and send a
-                            // Web Push "it's your turn" to the account(s) behind any newly-asked userId
-                            // (look them up via GameSeats → PushSubs).
+
+                            // Only notify the seats that are being asked NOW that weren't a moment ago —
+                            // covers off-turn reactions (Ambush etc.), not just the main turn holder.
+                            if (WebPush.enabled && newlyAsked.nonEmpty)
+                                notifyTurn(journalId, newlyAsked)
+
                             complete(StatusCodes.Accepted)
                         }
                         catch { case e : Throwable => complete(StatusCodes.Forbidden, "") }

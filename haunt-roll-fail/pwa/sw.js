@@ -2,11 +2,17 @@
 //
 // Deliberately minimal so it NEVER interferes with the game's own Cache-API asset pipeline
 // (see loader.scala). It exists only to:
-//   1. satisfy the PWA "installable" requirement (manifest + SW + fetch handler over HTTPS),
+//   1. satisfy the PWA "installable" requirement (manifest + registered SW over HTTPS),
 //   2. receive Web Push notifications ("it's your turn" / off-turn reactions like Ambush),
 //   3. focus or open the right page when a notification is tapped.
 //
-// It does NOT cache or rewrite /hrf/* asset requests — the fetch handler is a pass-through.
+// IMPORTANT: there is intentionally NO 'fetch' handler. The game loads hundreds of assets
+// concurrently through the Cache API; routing them through a service worker — even a
+// pass-through one that never calls respondWith() — can intermittently fail with
+// net::ERR_FAILED when the browser terminates the idle SW mid-request. A notification-only
+// SW does not need a fetch handler, and modern browsers (Chrome 89+, iOS 16.4+) do not
+// require one for installability. So we register no fetch listener at all; every request
+// goes straight to the network exactly as if no SW were present.
 
 self.addEventListener('install', () => {
     self.skipWaiting();
@@ -15,11 +21,6 @@ self.addEventListener('install', () => {
 self.addEventListener('activate', (event) => {
     event.waitUntil(self.clients.claim());
 });
-
-// Pass-through fetch handler. Registering *a* fetch handler is what makes the app installable on
-// some browsers; by never calling event.respondWith() we let the browser handle every request
-// exactly as it would without a service worker (so the game's own asset caching is untouched).
-self.addEventListener('fetch', () => {});
 
 // Web Push. Payload is JSON: { title, body, url, tag }.
 self.addEventListener('push', (event) => {

@@ -36,7 +36,10 @@ echo "[1/6] stage files on NAS ($STAGE)"
 sshx "rm -rf $STAGE && mkdir -p $STAGE/pwa"
 sshx "cat > $STAGE/good-game.jar" < "$REPO/deploy/good-game.jar"
 sshx "cat > $STAGE/index.html"    < "$REPO/haunt-roll-fail/index.html"
+tr -d '\r' < "$REPO/deploy/entrypoint.sh" | sshx "cat > $STAGE/entrypoint.sh"   # LF endings for /bin/sh
 tar -C "$REPO/haunt-roll-fail/pwa" -cf - . | sshx "tar -C $STAGE/pwa -xf -"
+# Optional VAPID keys (gitignored) — deployed into the persistent /data volume so push works.
+[ -f "$REPO/deploy/keys/vapid.env" ] && sshx "cat > $STAGE/vapid.env" < "$REPO/deploy/keys/vapid.env" && echo "  (staged vapid.env)"
 echo "  staged: $(sshx "ls -1 $STAGE $STAGE/pwa | tr '\n' ' '")"
 
 echo "[2/6] copy into container + mirror into $SRC_DIR"
@@ -45,7 +48,14 @@ set -e
 echo '$NAS_PW' | sudo -S -v 2>/dev/null
 sudo $DOCKER cp $STAGE/good-game.jar $CONTAINER:/app/good-game.jar
 sudo $DOCKER cp $STAGE/index.html    $CONTAINER:/app/haunt-roll-fail/index.html
+sudo $DOCKER cp $STAGE/entrypoint.sh $CONTAINER:/app/entrypoint.sh
+sudo $DOCKER exec $CONTAINER chmod +x /app/entrypoint.sh
 sudo $DOCKER cp $STAGE/pwa           $CONTAINER:/app/haunt-roll-fail/
+if [ -f "$STAGE/vapid.env" ]; then
+  sudo $DOCKER cp $STAGE/vapid.env $CONTAINER:/data/vapid.env
+  sudo $DOCKER exec $CONTAINER chmod 600 /data/vapid.env 2>/dev/null || true
+  echo "  vapid.env -> /data (push will be enabled)"
+fi
 if [ -d "$SRC_DIR" ]; then
   sudo cp $STAGE/good-game.jar $SRC_DIR/deploy/good-game.jar 2>/dev/null || true
   sudo cp $STAGE/index.html    $SRC_DIR/haunt-roll-fail/index.html 2>/dev/null || true
@@ -69,7 +79,7 @@ sshx "bash -s" <<REMOTE
 echo '$NAS_PW' | sudo -S -v 2>/dev/null
 echo -n "PUBLIC_URL="; sudo $DOCKER exec $CONTAINER printenv PUBLIC_URL 2>/dev/null || echo "(unknown)"
 echo "container IP: \$(sudo $DOCKER inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $CONTAINER)"
-sudo $DOCKER logs --tail 40 $CONTAINER 2>&1 | grep -iE "Migrat|Started server|Serving|First run|Exception|ERROR" || echo "(no notable log lines)"
+sudo $DOCKER logs --tail 40 $CONTAINER 2>&1 | grep -iE "Migrat|Started server|Serving|First run|Web Push|Loading VAPID|Exception|ERROR" || echo "(no notable log lines)"
 REMOTE
 
 echo "[6/6] verify endpoints from inside the NAS"
