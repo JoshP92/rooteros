@@ -330,7 +330,8 @@ object GoodGame {
             server = server.enableHttps(hcc)
         }
 
-        val bindingFuture = server.bind(route)
+        // gzip/deflate responses (esp. the ~40MB JS) so first load is usable over the internet
+        val bindingFuture = server.bind(encodeResponse { route })
 
         println("Started server.")
 
