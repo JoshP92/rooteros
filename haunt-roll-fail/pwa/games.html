@@ -89,7 +89,11 @@
         .cardnote { color: #6a6a6a; font-size: 13px; margin-top: 11px; line-height: 1.5; }
         .cardfoot { display: flex; align-items: center; justify-content: space-between; margin-top: 13px; }
         .cardfoot .when { font-size: 12px; color: #5c5c5c; }
-        .playbtn { padding: 8px 22px; font-size: 14px; }
+        .footbtns { display: flex; align-items: center; gap: 12px; }
+        .removebtn { background: transparent; color: #9a8a8a; padding: 9px 14px; min-height: 40px;
+                     display: inline-flex; align-items: center; font-size: 13px; font-weight: 500; }
+        .removebtn:hover { color: #cc9988; background: #1a1212; }
+        .playbtn { padding: 9px 22px; min-height: 40px; display: inline-flex; align-items: center; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -204,7 +208,8 @@
                 if (players.length) html += '<div class="scoreboard"></div>';
                 else html += '<div class="cardnote">No live details yet — open the game once and players &amp; scores appear here.</div>';
                 html += '<div class="cardfoot"><span class="when"></span>' +
-                        '<button class="playbtn">Play</button></div>';
+                        '<span class="footbtns"><button class="removebtn">Remove</button>' +
+                        '<button class="playbtn">Play</button></span></div>';
                 card.innerHTML = html;
 
                 card.querySelector(".title").textContent = title;
@@ -236,6 +241,7 @@
                 card.querySelector(".playbtn").addEventListener("click", () => {
                     location.href = SERVER + "/play/" + encodeURIComponent(g.meta) + "/" + encodeURIComponent(g.playSecret);
                 });
+                card.querySelector(".removebtn").addEventListener("click", () => removeGame(g, title));
                 box.appendChild(card);
             }
         }
@@ -246,16 +252,20 @@
             m.className = "msg" + (cls ? " " + cls : "");
         }
 
+        let loadSeq = 0;
         async function loadGames() {
             const acct = getAccount();
             if (!acct) return;
+            const seq = ++loadSeq;   // drop out-of-order responses (a poll in flight before a remove/add)
             try {
                 const res = await fetch(SERVER + "/my-games/" + acct.id + "/" + acct.secret);
+                if (seq !== loadSeq) return;
                 if (!res.ok) { setMsg("Couldn't load games (" + res.status + ").", "err"); return; }
                 const games = await res.json();
+                if (seq !== loadSeq) return;
                 render(games);
             } catch (e) {
-                setMsg("Network error loading games.", "err");
+                if (seq === loadSeq) setMsg("Network error loading games.", "err");
             }
         }
 
@@ -313,6 +323,17 @@
                 if (res.ok) { input.value = ""; setMsg("Game added.", "ok"); await loadGames(); }
                 else setMsg("Couldn't add that game (" + res.status + ") — double-check the link.", "err");
             } catch (e) { setMsg("Error adding game: " + e.message, "err"); }
+        }
+
+        async function removeGame(g, title) {
+            const acct = getAccount();
+            if (!acct) { setMsg("No account on this device.", "err"); return; }
+            if (!confirm('Remove "' + title + '" from your list? This only affects your dashboard — it does not change the game or other players.')) return;
+            try {
+                const res = await fetch(SERVER + "/remove-game/" + acct.id + "/" + acct.secret, { method: "POST", body: g.journalId });
+                if (res.ok) { setMsg("Game removed from your list.", "ok"); await loadGames(); }
+                else setMsg("Couldn't remove the game (" + res.status + ").", "err");
+            } catch (e) { setMsg("Error removing game: " + e.message, "err"); }
         }
 
         async function sendTestPush() {

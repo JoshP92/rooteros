@@ -663,6 +663,21 @@ object GoodGame {
                     }
                 }
             } ~
+            // Remove a game from THIS account's list (e.g. a wrong link was added). Only deletes the
+            // caller's own GameSeat for that journal — never touches the game itself or other players.
+            (post & path("remove-game" / Segment / Segment)) { case (accountId, accountSecret) =>
+                decodeRequest {
+                    entity(as[String]) { body =>
+                        val journalId = urlsafe(body.trim)
+                        try {
+                            checkAccount(accountId, accountSecret)
+                            execute(gameSeats.filter(_.accountId === accountId).filter(_.journalId === journalId).delete)
+                            complete(StatusCodes.OK)
+                        }
+                        catch { case e : Throwable => complete(StatusCodes.Forbidden, "") }
+                    }
+                }
+            } ~
             // Send a test push to all of this account's subscriptions, so the user can verify the
             // whole pipeline (subscribe -> server send -> sw.js notification) works on their device.
             (post & path("test-push" / Segment / Segment)) { case (accountId, accountSecret) =>
