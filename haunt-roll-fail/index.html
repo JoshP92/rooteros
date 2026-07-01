@@ -318,6 +318,32 @@
                 background-image:
                     url("background.png");
             }
+
+            /* Small always-available link back to the /games dashboard (added as a plain HTML
+               overlay so it needs no Scala.js rebuild). Subtle by default, solid on hover. */
+            #rooteros-home {
+                position: fixed;
+                top: 0; left: 0;
+                margin: calc(6px + env(safe-area-inset-top, 0px)) 0 0 calc(6px + env(safe-area-inset-left, 0px));
+                z-index: 1000;
+                font-family: system-ui, "Fira Sans", sans-serif;
+                font-size: 12px;
+                line-height: 1;
+                color: #b0b0b0;
+                background: rgba(16, 16, 16, 0.72);
+                border: 1px solid #3a3a3a;
+                border-radius: 999px;
+                padding: 5px 11px;
+                text-decoration: none;
+                opacity: 0.5;
+                -webkit-backdrop-filter: blur(2px);
+                backdrop-filter: blur(2px);
+                -webkit-user-select: none;
+                user-select: none;
+                transition: opacity 0.15s;
+            }
+            #rooteros-home:hover { opacity: 1; }
+            :fullscreen #rooteros-home { display: none; }
         </style>
 
         <link id="icon" type="image/x-icon" rel="shortcut icon" comment="omen icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAGSUlEQVR4Ae1bbUgUWxi2LDUjFEUMQSFMwZAIFf0nmqCkKIbfiKBERCoI3pKbpmSBiGgikYqW3v7lD734AeIn+YH5Q1OU/GBVFEGCEBO5gUi8l2fyHdZlN3dndmdmYYXhzMyec573ed5z3nPmnKOTk+PPoYBDAXtTgIj+MnXZGxeL7GXSa2trq83NzVRSUkIPHz6kJ0+eUGtrK21ubs5yHv3UIhCtZgah7e3tqezsbHJycjJ53b9/n16/fk09PT00MzNDOp1uaX9//x8i+ttuRYHhOzs7425ubiaJ/0kUd3d38vf3p8jISKHV7O7uDrEYWnX4Gbtg7IMHDySRNyVMb28vod4zQFp8gJHfvn371xQRqe8bGhrsR4Dz+r05Ily4cIHu3btH79+/p9OYIIwkWnS6aBO8D2PNIWgqz+3bt6m+vp4QQFEfXyKIlm9g7IsXLyT3fe7ndkWaHQKj4TVTnj3vPYZBuyXOhoeGhkryfn5+vv2RZ9JIJyYmKD4+XhL5K1eu0OHhYTPq4dak+ZTJDw0NUWxsrCTi3CVu3rxpH8MbewXkf/78WV9QUCCLOAuA2SLmDZpvAez11dXV1Rs3bliFPIuAsV7TAjD52dlZcnV1tSp5iJCTk6NdAZj82NgYYXbGXrNm6uPjQ79+/arkbqaZlMl/+PDBJsT1RUTX0lQ3YPJyZnb6BM+7HxkZ0U43YPKlpaU29zwL09/frw0BmHxlZaVi5CHC8PCw+gKAPMb4tLQ0Rcl7eXnRwcFBO/BVCYDs9aWlpb3AwEBFycP7/C2gKvmuri7FiXP/HxgYUKf5s+dfvXqlGvmEhASBvOLNn8ljnZ49oXR66dIlOjo6alKNfEpKimrkIXZubq7yTZ89f/fuXVXJQwBe91Ms+DH5uLg41clPTk4q630mb40la7mxIj09XfnABwGePXumuuchHm91Kdr09/b2BuR6zhrly8rK1Gn6aHbWICCnjpCQEHWaPtbcMebikkNATllgK9700cfwkfHx40fhQMLFixdVE2B6elrZps8B5vj4+CUCYGpqqmrkR0dHlW/6LADI19TUqEL+zp07NDWFPc7fm5xsk2IpgPGJK6fvSi0bFhZGJycnlaqSX1lZ2cBxE6kkpJbDNhlWeUFeMW/rAwEYq6xXr15VnDw2SFX1OsAXFxe/q0EeLQbYqnieVf/8+TNdvnxZsuevXbtGGRkZZOneX0xMDLW3Y1lPhWbP5AcHByUTh/cwWvDiJOo058PJw8OD1tfXl9gGxQVg4I6ODknkXVxcqKqqSjikyHUhnuDe2Dqhs7OzcNKzrq5OxMNIo19WPx7Z9J5By8vLRWMsidxJSUm0tbV15rgqG4y6sUSenJx8pu6XLzGv+j2uY4bJeJ8+fRLfcx02T2EIzuCyEeamiBFv374912AmmpmZKWJwP+ffsGnKuIg//F4R8jhsfP36ddEANuRPaVRUFG1sbMybayjn46CIIPn169cNfo90YWHhO2OOj4/bVgQGnpub+w/naxjYnBSe5PKWeIjLFBcXC3gYYvlcD/+G9QbEE9jR0tIiCccsmwCI+bXhp21ERAT5+vqaFAQeZGPNAjLIxGUbGxsFjPDwcGFHJzo6mjo7O8W6vb29hd+fP38uvjOoSt4jDEHULSoqEoAwDHV3d1NFRQV5enoaFeDRo0dWMYZFCAoKEnECAgKEeyy0wjF5eXnib/wJzOXkMdcrjQqxyJGVlSUQ6+vrE0ENuwL+ScFaBmB+j6Os+hjc7PXf8T26yps3b4hXgNkOpHp0LL9FBfydj+bHgIYpr7/JBjw1kb8s3717R0+fPhVxMTdgbOz0Gjs6h5EH5//hLNn2oAJcGMoY2DC1RR/ELBFTXp47PH78mBCIQQzHaG7dukUQA10S/wWCNcDq6mrCyIDWip1n5MHSmOVuPy3B5JuamkySx+EGzicZyEhBrpPX9vD85cuXHxB/fn7+B54LCwspODhYwK+trSXe+eWyy8vLO6dnio0gmPEKFXGzx3k9Pz8/wuIDjIDiiNIMZkZ1srMAKzExkTAq4B5ds62tTbjH/ICHS9lAXAFAcDYXZ/YABgB8+0NtJo6U89s6BRZmh/C8Pr7NbDAGov/O1oQN6we2Tqeb525h+Lvj2aGAQwGHAtZU4H9M9J6zIg9sOwAAAABJRU5ErkJggg==" />
@@ -467,6 +493,8 @@
         </script>
 
         <div id="force-allow-scroll" style="position: absolute; width: 0.100svw; height: 0.100svh; left: 0; top: 0; opacity: 0.01; z-index: -1000;"></div>
+
+        <a id="rooteros-home" href="/games" title="Your games dashboard">⌂ My games</a>
 
         <div id="font-size-adjust" style="font-size: 100%;">
             <div id="game-attachment-point">
