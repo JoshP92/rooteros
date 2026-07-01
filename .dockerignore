@@ -1,0 +1,20 @@
+# Keep the Docker build context small. The Dockerfile COPYs only runtime files;
+# this just trims what gets sent to the daemon (matters most when building on the NAS).
+.git
+*.log
+good-game-database.*
+
+# sbt build output
+good-game/target
+good-game/project/target
+good-game/project/project/target
+scala-js-dom-reduced/target
+scala-js-dom-reduced/project/target
+haunt-roll-fail/project/target
+haunt-roll-fail/project/project/target
+
+# haunt-roll-fail/target: keep ONLY the linked game JS, drop the rest
+haunt-roll-fail/target/*
+!haunt-roll-fail/target/scala-2.13
+haunt-roll-fail/target/scala-2.13/*
+!haunt-roll-fail/target/scala-2.13/hrf-fastopt.js

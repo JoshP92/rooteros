@@ -9,9 +9,8 @@ target/
 project/target/
 project/project/target/
 
-# Local run/build logs (from run.ps1 or manual sbt runs)
-good-game/create.log
-good-game/server.log
+# Local run/build logs (from run.ps1 or manual sbt/java runs)
+good-game/*.log
 
 # OS junk
 .DS_Store
