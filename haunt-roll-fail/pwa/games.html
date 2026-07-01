@@ -67,25 +67,24 @@
         a.plain { color: #7a9; }
         .creategame { display: block; text-align: center; text-decoration: none; background: #2d5a2d;
                       color: #eaffea; font-weight: 600; font-size: 15px; padding: 13px; border-radius: 11px; margin-bottom: 16px; }
-        .card { cursor: pointer; }
-        .detail { position: fixed; inset: 0; background: #000; overflow-y: auto; z-index: 100;
-                  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-        .detail-inner { max-width: 640px; margin: 0 auto; padding: 18px 16px 40px; }
-        .detail-close { background: #222; color: #bbb; margin-bottom: 16px; }
-        .detail h2 { font-size: 22px; color: #e6e6e6; margin: 4px 0 2px; font-weight: 600; }
-        .detail-metaline { color: #6f6f6f; font-size: 13px; text-transform: capitalize; margin-bottom: 14px; }
-        .detail-turn { font-size: 15px; color: #9a9a9a; background: #111; border: 1px solid #262626;
-                       border-radius: 10px; padding: 10px 14px; margin-bottom: 18px; }
-        .detail-turn.you { color: #eaffea; background: #142a14; border-color: #2f6d2f; font-weight: 600; }
-        .detail-players { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
-        .prow { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 10px;
-                background: #101010; border: 1px solid #242424; border-radius: 10px; padding: 11px 14px; }
-        .prow.turn { border-color: #3f7d3f; background: #0f1a0f; }
-        .prow .pf { color: #d8d8d8; font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .prow .pp { color: #8a8a8a; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .prow .pvp { color: #e0e0e0; font-weight: 700; font-size: 14px; justify-self: end; }
-        .detail-note { color: #6a6a6a; font-size: 14px; padding: 16px 4px; line-height: 1.5; }
-        .detail-play { width: 100%; padding: 14px; font-size: 16px; background: #2d5a2d; color: #eaffea; }
+        .card { cursor: default; }
+        .card .row1 { align-items: flex-start; }
+        .card .selficon { flex: 0 0 auto; width: 30px; height: 30px; object-fit: contain; margin-top: 1px; }
+        .card .titlewrap { flex: 1 1 auto; min-width: 0; }
+        .card .meta { font-size: 12px; color: #7a8a72; text-transform: capitalize; margin-top: 3px; }
+        .scoreboard { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+        .srow { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 9px;
+                padding: 5px 9px; border-radius: 8px; border: 1px solid transparent; }
+        .srow.self { background: #14210f; border-color: #35502a; }
+        .ficon { width: 20px; height: 20px; object-fit: contain; }
+        .sfaction { color: #cfcfcf; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .srow.turn .sfaction::after { content: " ●"; color: #6ac06a; font-size: 11px; }
+        .srow.self .sfaction { color: #eaffea; font-weight: 600; }
+        .svp { color: #e6e6e6; font-weight: 700; font-size: 13px; justify-self: end; white-space: nowrap; }
+        .cardnote { color: #6a6a6a; font-size: 13px; margin-top: 11px; line-height: 1.5; }
+        .cardfoot { display: flex; align-items: center; justify-content: space-between; margin-top: 13px; }
+        .cardfoot .when { font-size: 12px; color: #5c5c5c; }
+        .playbtn { padding: 8px 22px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -117,17 +116,6 @@
 
         <div class="msg" id="msg"></div>
         <div class="foot">RooterOS · this device is your account (<span id="acctId">…</span>)</div>
-    </div>
-
-    <div class="detail" id="detail" style="display:none">
-        <div class="detail-inner">
-            <button class="detail-close" id="detailClose">Back</button>
-            <h2 id="detailTitle"></h2>
-            <div class="detail-metaline" id="detailMeta"></div>
-            <div id="detailTurn" class="detail-turn"></div>
-            <div id="detailPlayers" class="detail-players"></div>
-            <button id="detailPlay" class="detail-play">Play</button>
-        </div>
     </div>
 
     <script>
@@ -171,6 +159,15 @@
             return (meta || "").replace(/[-_]/g, " ").trim();
         }
 
+        function parseStatus(s) {
+            try { return JSON.parse(s || "{}").players || []; } catch (e) { return []; }
+        }
+
+        function iconTag(cls, icon) {
+            if (icon) return '<img class="' + cls + '" src="' + SERVER + '/faction-icon/' + encodeURIComponent(icon) + '" alt="" loading="lazy" />';
+            return '<span class="' + cls + '"></span>';
+        }
+
         function render(games) {
             const box = document.getElementById("games");
             const empty = document.getElementById("empty");
@@ -179,66 +176,44 @@
             empty.style.display = "none";
             games.sort((a, b) => (b.yourTurn - a.yourTurn) || (b.updated - a.updated));
             for (const g of games) {
-                const a = document.createElement("div");
-                a.className = "card" + (g.yourTurn ? " turn" : "");
-                a.setAttribute("role", "button");
-                a.tabIndex = 0;
-                const title = g.title && g.title.length ? g.title : "Game";
-                a.innerHTML =
-                    '<div class="row1">' +
-                        '<div class="title"></div>' +
+                const players = parseStatus(g.status);
+                const me = players.find(p => p.self);
+                const card = document.createElement("div");
+                card.className = "card" + (g.yourTurn ? " turn" : "");
+                const title = ((g.title && g.title.length ? g.title : "Game").replace(/\s*lobby\s*$/i, "").trim()) || "Game";
+
+                let html = '<div class="row1">';
+                if (me) html += iconTag("selficon", me.icon);
+                html += '<div class="titlewrap"><div class="title"></div><div class="meta"></div></div>' +
                         '<div class="badge ' + (g.yourTurn ? "turn" : "wait") + '">' + (g.yourTurn ? "Your turn" : "Waiting") + '</div>' +
-                    '</div>' +
-                    '<div class="row2">' +
-                        '<div class="meta"></div>' +
-                        '<div class="when">' + relTime(g.updated) + '</div>' +
                     '</div>';
-                a.querySelector(".title").textContent = title;
-                a.querySelector(".meta").textContent = prettyMeta(g.meta);
-                a.addEventListener("click", () => openDetail(g));
-                a.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(g); } });
-                box.appendChild(a);
-            }
-        }
+                if (players.length) html += '<div class="scoreboard"></div>';
+                else html += '<div class="cardnote">No live details yet — open the game once and players &amp; scores appear here.</div>';
+                html += '<div class="cardfoot"><span class="when">' + relTime(g.updated) + '</span>' +
+                        '<button class="playbtn">Play</button></div>';
+                card.innerHTML = html;
 
-        function parseStatus(s) {
-            try { return JSON.parse(s || "{}").players || []; } catch (e) { return []; }
-        }
+                card.querySelector(".title").textContent = title;
+                card.querySelector(".meta").textContent = me ? ("You: " + me.faction) : prettyMeta(g.meta);
 
-        function openDetail(g) {
-            document.getElementById("detailTitle").textContent = (g.title && g.title.length) ? g.title : "Game";
-            document.getElementById("detailMeta").textContent = prettyMeta(g.meta);
-            const players = parseStatus(g.status);
-            const turnPlayers = players.filter(p => p.turn);
-            const turnEl = document.getElementById("detailTurn");
-            if (g.yourTurn) { turnEl.textContent = "Your turn"; turnEl.className = "detail-turn you"; }
-            else if (turnPlayers.length) { turnEl.textContent = "Waiting for " + turnPlayers.map(p => p.player || p.faction).join(", "); turnEl.className = "detail-turn"; }
-            else { turnEl.textContent = "Waiting…"; turnEl.className = "detail-turn"; }
+                const sb = card.querySelector(".scoreboard");
+                if (sb) {
+                    players.slice().sort((a, b) => (b.vp || 0) - (a.vp || 0)).forEach(p => {
+                        const row = document.createElement("div");
+                        row.className = "srow" + (p.turn ? " turn" : "") + (p.self ? " self" : "");
+                        row.innerHTML = iconTag("ficon", p.icon) + '<span class="sfaction"></span><span class="svp"></span>';
+                        row.querySelector(".sfaction").textContent = (p.faction || "") + (p.self ? " (you)" : "");
+                        row.querySelector(".svp").textContent = (typeof p.vp === "number" && p.vp >= 0) ? (p.vp + " VP") : "";
+                        sb.appendChild(row);
+                    });
+                }
 
-            const pb = document.getElementById("detailPlayers");
-            pb.innerHTML = "";
-            if (!players.length) {
-                const note = document.createElement("div");
-                note.className = "detail-note";
-                note.textContent = "No live details yet — open the game once and players & scores will show here.";
-                pb.appendChild(note);
-            } else {
-                players.slice().sort((a, b) => (b.vp || 0) - (a.vp || 0)).forEach(p => {
-                    const row = document.createElement("div");
-                    row.className = "prow" + (p.turn ? " turn" : "");
-                    row.innerHTML = '<div class="pf"></div><div class="pp"></div><div class="pvp"></div>';
-                    row.querySelector(".pf").textContent = p.faction || "";
-                    row.querySelector(".pp").textContent = p.player || "";
-                    row.querySelector(".pvp").textContent = (typeof p.vp === "number" && p.vp >= 0) ? (p.vp + " VP") : "";
-                    pb.appendChild(row);
+                card.querySelector(".playbtn").addEventListener("click", () => {
+                    location.href = SERVER + "/play/" + encodeURIComponent(g.meta) + "/" + encodeURIComponent(g.playSecret);
                 });
+                box.appendChild(card);
             }
-            const playBtn = document.getElementById("detailPlay");
-            playBtn.onclick = () => { location.href = SERVER + "/play/" + encodeURIComponent(g.meta) + "/" + encodeURIComponent(g.playSecret); };
-            document.getElementById("detail").style.display = "";
         }
-
-        function closeDetail() { document.getElementById("detail").style.display = "none"; }
 
         function setMsg(text, cls) {
             const m = document.getElementById("msg");
@@ -320,8 +295,12 @@
                 const acct = getAccount();
                 if (!acct) return;
                 const res = await fetch(SERVER + "/test-push/" + acct.id + "/" + acct.secret, { method: "POST", body: "" });
-                if (res.ok) setMsg("Test sent — you should get a notification shortly.", "ok");
-                else setMsg("Test push failed (" + res.status + ").", "err");
+                const txt = await res.text();
+                if (res.ok) {
+                    if (/^0 /.test(txt)) setMsg("No notification subscription on this device yet — tap \"Enable notifications\" first.", "err");
+                    else setMsg("Test sent (" + txt + ") — you should get a notification shortly.", "ok");
+                }
+                else setMsg("Test push failed (" + res.status + "): " + txt, "err");
             } catch (e) { setMsg("Test push error: " + e.message, "err"); }
         }
 
@@ -348,7 +327,6 @@
             document.getElementById("testBtn").addEventListener("click", sendTestPush);
             document.getElementById("addBtn").addEventListener("click", addGame);
             document.getElementById("addInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addGame(); });
-            document.getElementById("detailClose").addEventListener("click", closeDetail);
             await loadGames();
             setInterval(loadGames, 20000);
             document.addEventListener("visibilitychange", () => { if (!document.hidden) loadGames(); });

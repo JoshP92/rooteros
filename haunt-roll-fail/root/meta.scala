@@ -1208,6 +1208,7 @@ object Meta extends MetaGame {
 
     def factionName(f : Faction) = f.name
     override def factionScore(g : Game, f : Faction) = { implicit val game : Game = g ; f.vp }
+    override def factionIcon(f : Faction) = f.style + "-glyph"
     def factionElem(f : Faction) = f.elem
     override def factionNote(f : Faction) : Elem = f.note
 

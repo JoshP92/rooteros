@@ -505,6 +505,19 @@ object GoodGame {
             (get & path("icon-maskable.png")) {
                 getFromFile(directory + "/pwa/icon-maskable.png")
             } ~
+            // Faction glyph icons for the dashboard. Given a glyph id (e.g. "mc-glyph"), search the
+            // per-category faction image dirs so the dashboard doesn't need to know the category.
+            (get & path("faction-icon" / Segment)) { glyphId =>
+                val id = glyphId.filter(c => c.isLetterOrDigit || c == '-' || c == '_')
+                val base = new java.io.File(directory + "/webp2/root/images/faction")
+                val file = Option(base.listFiles).toList.flatten.filter(_.isDirectory)
+                    .map(d => new java.io.File(d, id + ".webp")).find(_.exists)
+                file match {
+                    case Some(f) =>
+                        respondWithHeaders(`Cache-Control`(CacheDirectives.public, CacheDirectives.`max-age`(604800))) { getFromFile(f) }
+                    case None => complete(HttpEntity(ContentType(MediaTypes.`image/png`), transparentPng))
+                }
+            } ~
             (post & path("new-user")) {
                 decodeRequest {
                     entity(as[String]) { body =>
@@ -661,13 +674,16 @@ object GoodGame {
                                 "\"url\":"   + js("/games") + "," +
                                 "\"tag\":"   + js("rooteros-test") +
                             "}"
+                        val subs = execute(pushSubs.filter(_.accountId === accountId).result)
+                        println("[rooteros] test-push account " + accountId.take(6) + ": " + subs.size + " subscription(s)")
                         Future {
-                            execute(pushSubs.filter(_.accountId === accountId).result).foreach { sub =>
+                            subs.foreach { sub =>
                                 val code = WebPush.sendPush(sub.endpoint, sub.p256dh, sub.auth, payload)
+                                println("[rooteros] test-push send -> HTTP " + code)
                                 if (code == 404 || code == 410) execute(pushSubs.filter(_.endpoint === sub.endpoint).delete)
                             }
                         }.recover { case e : Throwable => println("[rooteros] test-push failed: " + e.getMessage) }
-                        complete(StatusCodes.Accepted)
+                        complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, subs.size + " subscription(s) on this account"))
                     }
                 }
                 catch { case e : Throwable => complete(StatusCodes.Forbidden, "") }
@@ -764,6 +780,8 @@ object GoodGame {
                         try {
                             execute(users.filter(_.id === userId).filter(_.secret === userSecret).result.head)
                             execute(accessRights.filter(_.journalId === journalId).filter(_.userId === userId).filter(_.right === "append").result.head)
+
+                            println("[rooteros] game-status journal " + journalId.take(6) + " waiting=[" + waiting + "] statusLen=" + status.length)
 
                             val prev = execute(journalStatuses.filter(_.journalId === journalId).result).headOption.map(_.waiting).getOrElse("")
                             val prevSet = prev.split(' ').filter(_.nonEmpty).toSet

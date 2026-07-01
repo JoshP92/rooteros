@@ -559,12 +559,16 @@ class HRFMetaUI(val ui : HRFUI, val meta : MetaGame, delayMainMenu : Int)(implic
                 val turnIds = asked./~(users.get).distinct
                 val playersJson = seating./{ f =>
                     val player = users.get(f).flatMap(i => enteredNames.get(i).orElse(preNames.get(i))).getOrElse(meta.factionName(f))
-                    "{\"faction\":\"" + jesc(meta.factionName(f)) + "\",\"player\":\"" + jesc(player) + "\",\"vp\":" + meta.factionScore(game, f) + ",\"turn\":" + asked.has(f) + "}"
+                    val isSelf = users.get(f) == HRF.user
+                    "{\"faction\":\"" + jesc(meta.factionName(f)) + "\",\"player\":\"" + jesc(player) + "\",\"vp\":" + meta.factionScore(game, f) + ",\"turn\":" + asked.has(f) + ",\"self\":" + isSelf + ",\"icon\":\"" + jesc(meta.factionIcon(f)) + "\"}"
                 }.join(",")
                 val body = turnIds.join(" ") + "\n{\"players\":[" + playersJson + "]}"
                 if (body != lastWaiting) {
                     lastWaiting = body
-                    server.foreach { j =>
+                    // Report to the LOBBY journal (HRF.lobby) — that's what the dashboard tracks, since a
+                    // seat's Play lives on the lobby journal so GameSeat.journalId == the lobby id. Also
+                    // report to the game journal (server) as a fallback. Deduped, fire-and-forget.
+                    (HRF.lobby.toList ++ server.toList).distinct.foreach { j =>
                         postF(HRF.server.get + "/game-status/" + HRF.user.get + "/" + HRF.secret.get + "/" + j, body)(_ => ())(())
                     }
                 }

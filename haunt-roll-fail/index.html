@@ -593,7 +593,7 @@
 
         <!-- { | SCRIPT | { -->
         <script id="load-hrf-version">
-            const code = "v20260701a";
+            const code = "v20260701e";
 
             const js = document.createElement("script");
             js.crossorigin = "use-credentials";
@@ -607,6 +607,18 @@
             }
 
             load(version);
+
+            // On some devices the map lays out at the wrong size at first paint and only corrects
+            // after a resize (phones: rotate twice; desktop: resize/maximize the window). Nudge the
+            // layout by firing resize events as the game finishes loading and the viewport settles.
+            js.addEventListener("load", function () {
+                [50, 250, 700, 1500, 3000].forEach(function (t) {
+                    setTimeout(function () { try { window.dispatchEvent(new Event("resize")); } catch (e) {} }, t);
+                });
+            });
+            window.addEventListener("load", function () {
+                setTimeout(function () { try { window.dispatchEvent(new Event("resize")); } catch (e) {} }, 400);
+            });
         </script>
         <!-- } | SCRIPT | } -->
 

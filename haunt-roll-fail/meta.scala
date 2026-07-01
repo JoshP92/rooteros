@@ -119,6 +119,7 @@ trait MetaBase {
 
     def factionName(f : F) : String
     def factionScore(g : G, f : F) : Int = -1   // current victory-point score, or -1 if the game has no VP concept
+    def factionIcon(f : F) : String = ""        // a small icon image id for the faction (resolved by /faction-icon), or "" if none
     def factionElem(f : F) : Elem
     def factionNote(f : F) : Elem = Empty
 
