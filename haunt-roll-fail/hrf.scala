@@ -549,6 +549,27 @@ class HRFMetaUI(val ui : HRFUI, val meta : MetaGame, delayMainMenu : Int)(implic
             var position = 0
             var cycle = false
 
+            var lastWaiting : String = null
+
+            // Report whose-turn + a compact scoreboard (players/VPs) to the backend on every turn
+            // transition, so it can push "your turn" notifications and the dashboard can show live
+            // game details. Fire-and-forget; deduped on the body so we don't spam on every poll.
+            def reportWaiting(game : meta.G, asked : $[meta.F]) {
+                def jesc(s : String) = s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ")
+                val turnIds = asked./~(users.get).distinct
+                val playersJson = seating./{ f =>
+                    val player = users.get(f).flatMap(i => enteredNames.get(i).orElse(preNames.get(i))).getOrElse(meta.factionName(f))
+                    "{\"faction\":\"" + jesc(meta.factionName(f)) + "\",\"player\":\"" + jesc(player) + "\",\"vp\":" + meta.factionScore(game, f) + ",\"turn\":" + asked.has(f) + "}"
+                }.join(",")
+                val body = turnIds.join(" ") + "\n{\"players\":[" + playersJson + "]}"
+                if (body != lastWaiting) {
+                    lastWaiting = body
+                    server.foreach { j =>
+                        postF(HRF.server.get + "/game-status/" + HRF.user.get + "/" + HRF.secret.get + "/" + j, body)(_ => ())(())
+                    }
+                }
+            }
+
             def reread() { lj.read(position)(readLobby) }
 
             def readLobby(lines : $[String]) {
@@ -737,7 +758,7 @@ class HRFMetaUI(val ui : HRFUI, val meta : MetaGame, delayMainMenu : Int)(implic
                         else
                             new ServerJournal[meta.gaming.ExternalAction](meta, HRF.server.get, HRF.user.get, HRF.secret.get, server.get, s => meta.parseActionExternal(s), s => meta.writeActionExternal(s), HRF.paramInt("at") | 999999)
 
-                    startGame(seating, difficulties, state.selected, self, journal, title.|("%untitled%"), () => names, ServerSwitches)
+                    startGame(seating, difficulties, state.selected, self, journal, title.|("%untitled%"), () => names, ServerSwitches, reportWaiting)
 
                     reread()
 
@@ -1278,7 +1299,7 @@ class HRFMetaUI(val ui : HRFUI, val meta : MetaGame, delayMainMenu : Int)(implic
         ui.action.scroll.scrollTop = 0
     }
 
-    def startGame(seatingX : $[meta.F], difficulties : Map[meta.F, Difficulty], options : $[meta.O], self : $[meta.F], journal : Journal[meta.gaming.ExternalAction], title : String, names : () => Map[meta.F, String], swt : Switches) {
+    def startGame(seatingX : $[meta.F], difficulties : Map[meta.F, Difficulty], options : $[meta.O], self : $[meta.F], journal : Journal[meta.gaming.ExternalAction], title : String, names : () => Map[meta.F, String], swt : Switches, report : (meta.G, $[meta.F]) => Unit = (_, _) => ()) {
         history.nuke()
 
         val seating = seatingX.%(f => difficulties(f) != Off)
@@ -1391,7 +1412,7 @@ class HRFMetaUI(val ui : HRFUI, val meta : MetaGame, delayMainMenu : Int)(implic
 
             import meta.tagF
 
-            Runner.run(meta)(seating, options, resources, renderer, (g, f) => f.as[meta.F]./(f => ask(g, f)).|!("unsuitable ask"), journal)
+            Runner.run(meta)(seating, options, resources, renderer, (g, f) => f.as[meta.F]./(f => ask(g, f)).|!("unsuitable ask"), journal, (g, ff) => report(g, ff./~(_.as[meta.F])))
         }
 
     }

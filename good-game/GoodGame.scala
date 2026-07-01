@@ -158,6 +158,24 @@ object GoodGame {
     val journalTurns = TableQuery[JournalTurns]
 
 
+    // Live game status reported by the client (POST /game-status): `waiting` = space-separated
+    // userIds currently asked (drives the push diff), `status` = a small JSON scoreboard
+    // {"players":[{faction,player,vp,turn}]} shown on the dashboard's game-details view.
+
+    case class JournalStatus(journalId : String, waiting : String, status : String, updated : Long)
+
+    class JournalStatuses(tag : Tag) extends Table[JournalStatus](tag, "JournalStatuses") {
+        def journalId = column[String]("journalId", O.PrimaryKey)
+        def waiting = column[String]("waiting")
+        def status = column[String]("status")
+        def updated = column[Long]("updated")
+        def * = (journalId, waiting, status, updated).mapTo[JournalStatus]
+    }
+
+    val journalStatuses = TableQuery[JournalStatuses]
+
+
+
     // Web Push (VAPID) sender. A static singleton, initialized once from the VAPID_* env vars.
     // If the keys are absent/blank it stays disabled and sendPush no-ops, so the server runs fine
     // without push configured. See deploy/entrypoint.sh (sources /data/vapid.env).
@@ -311,6 +329,7 @@ object GoodGame {
         ensure("GameSeats")    { execute(gameSeats.schema.create) }
         ensure("PushSubs")     { execute(pushSubs.schema.create) }
         ensure("JournalTurns") { execute(journalTurns.schema.create) }
+        ensure("JournalStatuses") { execute(journalStatuses.schema.create) }
 
         // Persistence hardening. HSQLDB keeps changes in a write-ahead .log and only merges them into
         // the durable .script on CHECKPOINT/SHUTDOWN. An abrupt container stop (docker restart's
@@ -662,11 +681,12 @@ object GoodGame {
                     val myUserIds = seats.map(_.userId).toSet
                     val items = seats.map { s =>
                         val title = execute(journals.filter(_.id === s.journalId).map(_.name).result).headOption.getOrElse("")
-                        val turn = execute(journalTurns.filter(_.journalId === s.journalId).result).headOption
-                        val waiting = turn.map(_.waiting).getOrElse("")
+                        val st = execute(journalStatuses.filter(_.journalId === s.journalId).result).headOption
+                        val waiting = st.map(_.waiting).getOrElse("")
+                        val status = st.map(_.status).getOrElse("")
                         val waitingSet = waiting.split(' ').filter(_.nonEmpty).toSet
                         val yourTurn = waitingSet.exists(myUserIds.contains)
-                        val updated = turn.map(_.updated).getOrElse(s.updated)
+                        val updated = st.map(_.updated).getOrElse(s.updated)
                         "{" +
                             "\"journalId\":"  + js(s.journalId)  + "," +
                             "\"title\":"      + js(title)        + "," +
@@ -674,6 +694,7 @@ object GoodGame {
                             "\"playSecret\":" + js(s.playSecret) + "," +
                             "\"waiting\":"    + js(waiting)      + "," +
                             "\"yourTurn\":"   + yourTurn         + "," +
+                            "\"status\":"     + js(status)       + "," +
                             "\"updated\":"    + updated          +
                         "}"
                     }
@@ -722,6 +743,36 @@ object GoodGame {
 
                             // Only notify the seats that are being asked NOW that weren't a moment ago —
                             // covers off-turn reactions (Ambush etc.), not just the main turn holder.
+                            if (WebPush.enabled && newlyAsked.nonEmpty)
+                                notifyTurn(journalId, newlyAsked)
+
+                            complete(StatusCodes.Accepted)
+                        }
+                        catch { case e : Throwable => complete(StatusCodes.Forbidden, "") }
+                    }
+                }
+            } ~
+            // Richer whose-turn + scoreboard report from the game client. Body: first line is the
+            // space-separated waiting userIds (drives the push diff, exactly like /waiting-for); the
+            // rest is a small JSON scoreboard stored verbatim for the dashboard's details view.
+            (post & path("game-status" / Segment / Segment / Segment)) { case (userId, userSecret, journalId) =>
+                decodeRequest {
+                    entity(as[String]) { body =>
+                        val nl = body.indexOf('\n')
+                        val waiting = (if (nl >= 0) body.substring(0, nl) else body).trim.split(' ').map(urlsafe).filter(_.nonEmpty).mkString(" ")
+                        val status = (if (nl >= 0) body.substring(nl + 1) else "").trim.take(20000)
+                        try {
+                            execute(users.filter(_.id === userId).filter(_.secret === userSecret).result.head)
+                            execute(accessRights.filter(_.journalId === journalId).filter(_.userId === userId).filter(_.right === "append").result.head)
+
+                            val prev = execute(journalStatuses.filter(_.journalId === journalId).result).headOption.map(_.waiting).getOrElse("")
+                            val prevSet = prev.split(' ').filter(_.nonEmpty).toSet
+                            val nowSet = waiting.split(' ').filter(_.nonEmpty).toSet
+                            val newlyAsked = nowSet.diff(prevSet)
+
+                            execute(journalStatuses.filter(_.journalId === journalId).delete)
+                            execute(journalStatuses += JournalStatus(journalId, waiting, status, System.currentTimeMillis()))
+
                             if (WebPush.enabled && newlyAsked.nonEmpty)
                                 notifyTurn(journalId, newlyAsked)
 

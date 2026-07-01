@@ -38,6 +38,8 @@ sshx "cat > $STAGE/good-game.jar" < "$REPO/deploy/good-game.jar"
 sshx "cat > $STAGE/index.html"    < "$REPO/haunt-roll-fail/index.html"
 tr -d '\r' < "$REPO/deploy/entrypoint.sh" | sshx "cat > $STAGE/entrypoint.sh"   # LF endings for /bin/sh
 tar -C "$REPO/haunt-roll-fail/pwa" -cf - . | sshx "tar -C $STAGE/pwa -xf -"
+# The linked game JS (~40MB) only when DEPLOY_JS=1 (frontend changed), else server/static deploys skip it.
+[ "${DEPLOY_JS:-}" = "1" ] && [ -f "$REPO/haunt-roll-fail/target/scala-2.13/hrf-fastopt.js" ] && { sshx "cat > $STAGE/hrf-fastopt.js" < "$REPO/haunt-roll-fail/target/scala-2.13/hrf-fastopt.js" ; echo "  (staged hrf-fastopt.js)" ; }
 # Optional VAPID keys (gitignored) — deployed into the persistent /data volume so push works.
 [ -f "$REPO/deploy/keys/vapid.env" ] && sshx "cat > $STAGE/vapid.env" < "$REPO/deploy/keys/vapid.env" && echo "  (staged vapid.env)"
 echo "  staged: $(sshx "ls -1 $STAGE $STAGE/pwa | tr '\n' ' '")"
@@ -51,6 +53,11 @@ sudo $DOCKER cp $STAGE/index.html    $CONTAINER:/app/haunt-roll-fail/index.html
 sudo $DOCKER cp $STAGE/entrypoint.sh $CONTAINER:/app/entrypoint.sh
 sudo $DOCKER exec $CONTAINER chmod +x /app/entrypoint.sh
 sudo $DOCKER cp $STAGE/pwa           $CONTAINER:/app/haunt-roll-fail/
+if [ -f "$STAGE/hrf-fastopt.js" ]; then
+  sudo $DOCKER exec $CONTAINER mkdir -p /app/haunt-roll-fail/target/scala-2.13
+  sudo $DOCKER cp $STAGE/hrf-fastopt.js $CONTAINER:/app/haunt-roll-fail/target/scala-2.13/hrf-fastopt.js
+  echo "  hrf-fastopt.js -> container"
+fi
 if [ -f "$STAGE/vapid.env" ]; then
   sudo $DOCKER cp $STAGE/vapid.env $CONTAINER:/data/vapid.env
   sudo $DOCKER exec $CONTAINER chmod 600 /data/vapid.env 2>/dev/null || true

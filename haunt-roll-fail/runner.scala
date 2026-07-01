@@ -23,7 +23,7 @@ import scalajs.js
 import scalajs.js.timers.setTimeout
 
 object Runner {
-    def run(meta : MetaGame)(seating : $[meta.F], options : $[meta.O], resources : Resources, ui : meta.gaming.GameUI, auto : (meta.G, meta.gaming.F) => meta.gaming.AskResult, journal : Journal[meta.gaming.ExternalAction]) {
+    def run(meta : MetaGame)(seating : $[meta.F], options : $[meta.O], resources : Resources, ui : meta.gaming.GameUI, auto : (meta.G, meta.gaming.F) => meta.gaming.AskResult, journal : Journal[meta.gaming.ExternalAction], report : (meta.G, $[meta.gaming.F]) => Unit = (_, _) => ()) {
         import meta.gaming._
 
         sealed trait UIState
@@ -576,6 +576,7 @@ object Runner {
                     UIRecord("#unchoice 3", c, a)
 
                 case UIContinue(c @ Ask(faction, actions), Nil) =>
+                    report(game, $(faction))
                     auto(game, faction) match {
                         case AskHuman => UIAsk(c, Some(faction), actions, $)
                         case AskBot(q) =>
@@ -592,6 +593,8 @@ object Runner {
                         case a @ Ask(f, actions) => Some(Ask(f, actions))
                         case _ => None
                     })
+
+                    report(game, asks./(_.faction))
 
                     lazy val waits = asks./~(ask => auto(game, ask.faction) match {
                         case WaitRemote => Some(ask.faction)

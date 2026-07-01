@@ -118,6 +118,7 @@ trait MetaBase {
     def randomQuickGame() : (F, $[F], Map[F, String], $[O])
 
     def factionName(f : F) : String
+    def factionScore(g : G, f : F) : Int = -1   // current victory-point score, or -1 if the game has no VP concept
     def factionElem(f : F) : Elem
     def factionNote(f : F) : Elem = Empty
 

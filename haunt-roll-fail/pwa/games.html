@@ -65,6 +65,27 @@
         .msg.err { color: #c98; }
         .msg.ok { color: #8a8; }
         a.plain { color: #7a9; }
+        .creategame { display: block; text-align: center; text-decoration: none; background: #2d5a2d;
+                      color: #eaffea; font-weight: 600; font-size: 15px; padding: 13px; border-radius: 11px; margin-bottom: 16px; }
+        .card { cursor: pointer; }
+        .detail { position: fixed; inset: 0; background: #000; overflow-y: auto; z-index: 100;
+                  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+        .detail-inner { max-width: 640px; margin: 0 auto; padding: 18px 16px 40px; }
+        .detail-close { background: #222; color: #bbb; margin-bottom: 16px; }
+        .detail h2 { font-size: 22px; color: #e6e6e6; margin: 4px 0 2px; font-weight: 600; }
+        .detail-metaline { color: #6f6f6f; font-size: 13px; text-transform: capitalize; margin-bottom: 14px; }
+        .detail-turn { font-size: 15px; color: #9a9a9a; background: #111; border: 1px solid #262626;
+                       border-radius: 10px; padding: 10px 14px; margin-bottom: 18px; }
+        .detail-turn.you { color: #eaffea; background: #142a14; border-color: #2f6d2f; font-weight: 600; }
+        .detail-players { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
+        .prow { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 10px;
+                background: #101010; border: 1px solid #242424; border-radius: 10px; padding: 11px 14px; }
+        .prow.turn { border-color: #3f7d3f; background: #0f1a0f; }
+        .prow .pf { color: #d8d8d8; font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .prow .pp { color: #8a8a8a; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .prow .pvp { color: #e0e0e0; font-weight: 700; font-size: 14px; justify-self: end; }
+        .detail-note { color: #6a6a6a; font-size: 14px; padding: 16px 4px; line-height: 1.5; }
+        .detail-play { width: 100%; padding: 14px; font-size: 16px; background: #2d5a2d; color: #eaffea; }
     </style>
 </head>
 <body>
@@ -74,6 +95,8 @@
             <h1>Your games</h1>
         </header>
         <p class="sub" id="sub">Games you join appear here automatically.</p>
+
+        <a class="creategame" href="/play">Create a game</a>
 
         <div class="notif" id="notifBox">
             <div class="txt" id="notifTxt">Get a notification when it's your turn.</div>
@@ -94,6 +117,17 @@
 
         <div class="msg" id="msg"></div>
         <div class="foot">RooterOS · this device is your account (<span id="acctId">…</span>)</div>
+    </div>
+
+    <div class="detail" id="detail" style="display:none">
+        <div class="detail-inner">
+            <button class="detail-close" id="detailClose">Back</button>
+            <h2 id="detailTitle"></h2>
+            <div class="detail-metaline" id="detailMeta"></div>
+            <div id="detailTurn" class="detail-turn"></div>
+            <div id="detailPlayers" class="detail-players"></div>
+            <button id="detailPlay" class="detail-play">Play</button>
+        </div>
     </div>
 
     <script>
@@ -145,9 +179,10 @@
             empty.style.display = "none";
             games.sort((a, b) => (b.yourTurn - a.yourTurn) || (b.updated - a.updated));
             for (const g of games) {
-                const a = document.createElement("a");
+                const a = document.createElement("div");
                 a.className = "card" + (g.yourTurn ? " turn" : "");
-                a.href = SERVER + "/play/" + encodeURIComponent(g.meta) + "/" + encodeURIComponent(g.playSecret);
+                a.setAttribute("role", "button");
+                a.tabIndex = 0;
                 const title = g.title && g.title.length ? g.title : "Game";
                 a.innerHTML =
                     '<div class="row1">' +
@@ -160,9 +195,50 @@
                     '</div>';
                 a.querySelector(".title").textContent = title;
                 a.querySelector(".meta").textContent = prettyMeta(g.meta);
+                a.addEventListener("click", () => openDetail(g));
+                a.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(g); } });
                 box.appendChild(a);
             }
         }
+
+        function parseStatus(s) {
+            try { return JSON.parse(s || "{}").players || []; } catch (e) { return []; }
+        }
+
+        function openDetail(g) {
+            document.getElementById("detailTitle").textContent = (g.title && g.title.length) ? g.title : "Game";
+            document.getElementById("detailMeta").textContent = prettyMeta(g.meta);
+            const players = parseStatus(g.status);
+            const turnPlayers = players.filter(p => p.turn);
+            const turnEl = document.getElementById("detailTurn");
+            if (g.yourTurn) { turnEl.textContent = "Your turn"; turnEl.className = "detail-turn you"; }
+            else if (turnPlayers.length) { turnEl.textContent = "Waiting for " + turnPlayers.map(p => p.player || p.faction).join(", "); turnEl.className = "detail-turn"; }
+            else { turnEl.textContent = "Waiting…"; turnEl.className = "detail-turn"; }
+
+            const pb = document.getElementById("detailPlayers");
+            pb.innerHTML = "";
+            if (!players.length) {
+                const note = document.createElement("div");
+                note.className = "detail-note";
+                note.textContent = "No live details yet — open the game once and players & scores will show here.";
+                pb.appendChild(note);
+            } else {
+                players.slice().sort((a, b) => (b.vp || 0) - (a.vp || 0)).forEach(p => {
+                    const row = document.createElement("div");
+                    row.className = "prow" + (p.turn ? " turn" : "");
+                    row.innerHTML = '<div class="pf"></div><div class="pp"></div><div class="pvp"></div>';
+                    row.querySelector(".pf").textContent = p.faction || "";
+                    row.querySelector(".pp").textContent = p.player || "";
+                    row.querySelector(".pvp").textContent = (typeof p.vp === "number" && p.vp >= 0) ? (p.vp + " VP") : "";
+                    pb.appendChild(row);
+                });
+            }
+            const playBtn = document.getElementById("detailPlay");
+            playBtn.onclick = () => { location.href = SERVER + "/play/" + encodeURIComponent(g.meta) + "/" + encodeURIComponent(g.playSecret); };
+            document.getElementById("detail").style.display = "";
+        }
+
+        function closeDetail() { document.getElementById("detail").style.display = "none"; }
 
         function setMsg(text, cls) {
             const m = document.getElementById("msg");
@@ -272,6 +348,7 @@
             document.getElementById("testBtn").addEventListener("click", sendTestPush);
             document.getElementById("addBtn").addEventListener("click", addGame);
             document.getElementById("addInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addGame(); });
+            document.getElementById("detailClose").addEventListener("click", closeDetail);
             await loadGames();
             setInterval(loadGames, 20000);
             document.addEventListener("visibilitychange", () => { if (!document.hidden) loadGames(); });
